@@ -71,6 +71,10 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .pb select{width:auto;padding:6px 10px;border-radius:8px}.pb{display:flex;gap:6px;align-items:center}.pb span{color:var(--mut)}
 .pb button{padding:0 12px;min-width:34px;height:34px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;cursor:pointer;font:inherit}
 .pb button:hover:not(:disabled){border-color:var(--ac);color:var(--ac)}.pb button.on{background:var(--ac);border-color:var(--ac);color:#fff}.pb button:disabled{opacity:.4;cursor:default}
+.kpi .us,.us{color:var(--mut);font-size:12px;margin-top:6px;line-height:1.5}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{padding:5px 14px;border-radius:99px;border:1px solid var(--bd);cursor:pointer;font-size:12px;font-weight:600;color:var(--mut)}
+.chip:hover{border-color:var(--ac);color:var(--ac)}.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
 dialog.wide{width:min(920px,96vw)}
 .it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
 .it a{color:var(--bad);cursor:pointer;text-align:center;font-weight:700}
@@ -164,20 +168,34 @@ function render(){
 
 function bars(items,max){return items.map(([l,v,t])=>`<div class="bar"><div class="r"><span>${esc(l)}</span><b>${t}</b></div><div class="t"><div class="f" style="width:${max?Math.min(100,v/max*100):0}%"></div></div></div>`).join('')||'<div class="empty">Belum ada data</div>'}
 
+let DU='',DUS=[];
+const unitOf=o=>String(o.Satuan||'').trim().toLowerCase()||'-';
+const uLbl=u=>u==='-'?'':u;
+const fm=(v,u)=>num(v)+(uLbl(u)?' '+uLbl(u):'');
+function setDU(i){DU=DUS[i];dashboard()}
 function dashboard(){
-  const O=D.Orders,tot=sum(O,o=>o.Jumlah),nilai=sum(O,o=>o.Jumlah*o.Harga),aktif=O.filter(o=>o.Status!=='Selesai').length;
-  const by={};O.forEach(o=>by[o.Customer]=(by[o.Customer]||0)+Number(o.Jumlah||0));
+  const O=D.Orders,nilai=sum(O,o=>o.Jumlah*o.Harga),aktif=O.filter(o=>o.Status!=='Selesai').length;
+  const cnt={},U={};O.forEach(o=>{const u=unitOf(o);cnt[u]=(cnt[u]||0)+1;U[u]=(U[u]||0)+Number(o.Jumlah||0)});
+  const units=Object.keys(U).sort((a,b)=>cnt[b]-cnt[a]);DUS=units;
+  if(!U[DU])DU=units[0]||'m';
+  const mTot=U['m']||0;
+  const st=[1,2,3].map(i=>{const s=sum(D['HasilKerja'+i],x=>x.Hasil);return [`Hasil Kerja ${i}`,s,`${num(s)} m (${mTot?Math.round(s/mTot*100):0}%)`]});
+  const by={};O.filter(o=>unitOf(o)===DU).forEach(o=>by[o.Customer]=(by[o.Customer]||0)+Number(o.Jumlah||0));
   const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const st=[1,2,3].map(i=>{const s=sum(D['HasilKerja'+i],x=>x.Hasil);return [`Hasil Kerja ${i}`,s,`${num(s)} m (${tot?Math.round(s/tot*100):0}%)`]});
   const rec=O.slice(-6).reverse();
+  const total=units.length?`<div class="v">${fm(U[units[0]],units[0])}</div>${units.length>1?`<div class="us">${units.slice(1).map(u=>esc(fm(U[u],u))).join(' · ')}</div>`:''}`:'<div class="v">0</div>';
   $('#view').innerHTML=`<div class="grid">
-   ${[['Total Order',num(O.length)],['Total Jumlah',num(tot)+' m'],['Nilai PO',rp(nilai)],['Order Aktif',num(aktif)]].map(k=>`<div class="card kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div></div>`).join('')}</div>
-   <div class="two"><div class="card"><h3>Progres Produksi</h3>${bars(st,tot)}</div>
-   <div class="card"><h3>Top Customer (meter)</h3>${bars(top.map(([n,v])=>[n,v,num(v)+' m']),top[0]?.[1])}</div></div>
+   <div class="card kpi"><div class="l">Total Order</div><div class="v">${num(O.length)}</div></div>
+   <div class="card kpi"><div class="l">Total Jumlah</div>${total}</div>
+   <div class="card kpi"><div class="l">Nilai PO</div><div class="v">${rp(nilai)}</div></div>
+   <div class="card kpi"><div class="l">Order Aktif</div><div class="v">${num(aktif)}</div></div></div>
+   <div class="two"><div class="card"><h3>Progres Produksi</h3>${bars(st,mTot)}<div class="us" style="margin-top:12px">Hasil kerja dalam meter, persentase terhadap total order satuan m.</div></div>
+   <div class="card"><h3>Top Customer (${esc(uLbl(DU)||'tanpa satuan')})</h3>
+    <div class="chips">${units.map((u,i)=>`<span class="chip ${u===DU?'on':''}" onclick="setDU(${i})">${esc(uLbl(u)||'tanpa satuan')}</span>`).join('')}</div>
+    ${bars(top.map(([n,v])=>[n,v,fm(v,DU)]),top[0]?.[1])}</div></div>
    <div class="card" style="margin-top:16px"><h3>Order Terbaru</h3><div class="tw"><table><tr><th>Tgl</th><th>Customer</th><th>Uraian</th><th class="n">Jumlah</th><th>Status</th></tr>
    ${rec.map(o=>`<tr><td>${esc(o.Tgl)}</td><td>${esc(o.Customer)}</td><td>${esc(o.Uraian)}</td><td class="n">${num(o.Jumlah)} ${esc(o.Satuan)}</td><td><span class="badge ${o.Status}">${o.Status}</span></td></tr>`).join('')||'<tr><td colspan=5 class="empty">Belum ada order</td></tr>'}</table></div></div>`;
 }
-
 function cell(k,t,v){
   if(t==='order')return esc(ordLabel(v));
   if(k==='Status')return `<span class="badge ${v}">${esc(v)}</span>`;
