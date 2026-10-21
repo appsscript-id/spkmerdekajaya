@@ -67,9 +67,9 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .dg b{font-weight:500;padding:8px 0;border-radius:8px;cursor:pointer;font-size:13px}.dg b:hover{background:rgba(79,70,229,.12)}
 .dg b.td{color:var(--ac);font-weight:700}.dg b.sel{background:var(--ac);color:#fff}
 .df{text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}.df a{color:var(--ac);font-weight:600;cursor:pointer}
-.pg{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px}
-.pb{display:flex;gap:6px;align-items:center}.pb span{color:var(--mut)}
-.pb button{min-width:34px;height:34px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;cursor:pointer;font:inherit}
+.pg{border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px}
+.pb select{width:auto;padding:6px 10px;border-radius:8px}.pb{display:flex;gap:6px;align-items:center}.pb span{color:var(--mut)}
+.pb button{padding:0 12px;min-width:34px;height:34px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;cursor:pointer;font:inherit}
 .pb button:hover:not(:disabled){border-color:var(--ac);color:var(--ac)}.pb button.on{background:var(--ac);border-color:var(--ac);color:#fff}.pb button:disabled{opacity:.4;cursor:default}
 dialog.wide{width:min(920px,96vw)}
 .it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
@@ -80,7 +80,7 @@ dialog.wide{width:min(920px,96vw)}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none}.toast.s{opacity:1}
 .empty{text-align:center;color:var(--mut);padding:40px}
 @media(max-width:820px){aside{position:fixed;z-index:9;left:-250px}aside.o{left:0}.burger{display:block}main{padding:16px}.mb{grid-template-columns:1fr}}
-@media print{aside,.tools,.fb,.pb,.burger,.act{display:none!important}main{padding:0}}
+@media print{aside,.tools,.fb,.pg,.burger,.act{display:none!important}main{padding:0}}
 </style>
 </head>
 <body>
@@ -205,24 +205,19 @@ function tableView(){
    ${pers.length?sel(pers.map(v=>[v,perLbl(v)]),F.per,'F.per','Semua Periode'):''}
    ${has('Customer')?sel(D.Customer.map(c=>[c.Nama,c.Nama]),F.cust,'F.cust','Semua Customer'):''}
    <a class="rs" onclick="q='';PG=1;F={status:'',per:'',cust:''};tableView()">Reset</a></div>
-  <div class="card tw" style="padding:6px" id="tb"></div>`;
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div><div class="pg" id="pgb"></div></div>`;
   fill();
 }
-let PG=1,ALL=false;const PS=10;
+let PG=1,ALL=false,PS=10;
 function fill(){
   const p=PAGES[page],all=rowsF(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
   PG=Math.min(Math.max(1,PG),pages);
   const st=(PG-1)*ps,rows=all.slice(st,st+ps);
   $('#tb').innerHTML=`<table><tr>${p.f.map(f=>`<th class="${f[2]==='number'?'n':''}">${f[1]}</th>`).join('')}<th></th></tr>
-  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+1}" class="empty">Tidak ada data</td></tr>`}</table>
-  <div class="pg"><span class="cnt">${all.length?`Menampilkan ${st+1}–${st+rows.length} dari ${all.length} data`:'0 data'}</span><div class="pb">${pager(pages)}</div></div>`;
-}
-function pager(n){
-  if(n<=1)return '';
-  const a=[...new Set([1,n,PG-1,PG,PG+1])].filter(x=>x>=1&&x<=n).sort((x,y)=>x-y);
-  let h=`<button ${PG===1?'disabled':''} onclick="gp(${PG-1})">‹</button>`,last=0;
-  a.forEach(x=>{if(x-last>1)h+='<span>…</span>';h+=`<button class="${x===PG?'on':''}" onclick="gp(${x})">${x}</button>`;last=x});
-  return h+`<button ${PG===n?'disabled':''} onclick="gp(${PG+1})">›</button>`;
+  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+1}" class="empty">Tidak ada data</td></tr>`}</table>`;
+  $('#pgb').innerHTML=`<span class="cnt">${all.length?`Menampilkan ${st+1}–${st+rows.length} dari ${all.length} data`:'0 data'}</span>
+  <div class="pb"><select onchange="PS=+this.value;PG=1;fill()">${[10,25,50,100].map(x=>`<option ${x===PS?'selected':''}>${x}</option>`).join('')}</select>
+  <button ${PG<=1?'disabled':''} onclick="gp(${PG-1})">‹ Sebelumnya</button><span>Hal ${PG}/${pages}</span><button ${PG>=pages?'disabled':''} onclick="gp(${PG+1})">Berikutnya ›</button></div>`;
 }
 function gp(n){PG=n;fill();$('#tb').scrollIntoView({block:'start',behavior:'smooth'})}
 function printAll(){ALL=true;fill();setTimeout(()=>{print();ALL=false;fill()},100)}
