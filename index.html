@@ -113,7 +113,7 @@ dialog.wide{width:min(920px,96vw)}
 @media print{aside,.tools,.fb,.pg,.burger,.act{display:none!important}main{padding:0}}
 
 /* ===== Hasil Kerja ===== */
-.hk{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.hk{display:grid;grid-template-columns:1.1fr 1fr 1fr .9fr 1.4fr;gap:8px;}
 .hk span{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
 @media(max-width:820px){.hk{grid-template-columns:1fr 1fr}}
 
@@ -537,12 +537,48 @@ function hkFill(){
 function editHK(no,oid){
   const o=ordOf(oid),h=hkRec(no,oid)||{};
   $('#mh').textContent='Hasil Kerja · SPK '+no;
-  const blk=n=>`<div class="full"><label>Laporan ${n}</label><div class="hk">
-    <div><span>Jumlah Hasil Kerja</span><input name="L${n}_Jml" type="number" step="any" value="${esc(h['L'+n+'_Jml'])}"></div>
-    <div><span>Kotak</span><input name="L${n}_Kotak" type="number" step="any" value="${esc(h['L'+n+'_Kotak'])}"></div>
-    <div><span>No. Surat Jalan</span><input name="L${n}_NoSJ" value="${esc(h['L'+n+'_NoSJ'])}"></div>
-    <div><span>Tgl Surat Jalan</span><input name="L${n}_TglSJ" type="date" value="${esc(h['L'+n+'_TglSJ'])}"></div>
-    <div><span>Koreksi Jumlah</span><input name="L${n}_Koreksi" type="number" step="any" value="${esc(h['L'+n+'_Koreksi'])}"></div></div></div>`;
+  const blk=n=>`
+<div class="full">
+  <label>Laporan ${n}</label>
+
+  <div class="hk">
+
+    <div>
+      <span>Jumlah Hasil Kerja</span>
+      <input name="L${n}_Jml" type="number" step="any"
+             value="${esc(h['L'+n+'_Jml'])}">
+    </div>
+
+    <div>
+      <span>No. Surat Jalan</span>
+      <input name="L${n}_NoSJ"
+             value="${esc(h['L'+n+'_NoSJ'])}">
+    </div>
+
+    <div>
+      <span>Tgl Surat Jalan</span>
+      <input name="L${n}_TglSJ"
+             type="date"
+             value="${esc(h['L'+n+'_TglSJ'])}">
+    </div>
+
+    <div>
+      <span>Koreksi Jumlah</span>
+      <input name="L${n}_Koreksi"
+             type="number"
+             step="any"
+             value="${esc(h['L'+n+'_Koreksi'])}">
+    </div>
+
+    <div>
+      <span>Keterangan</span>
+      <input name="L${n}_Ket"
+             value="${esc(h['L'+n+'_Ket'])}">
+    </div>
+
+  </div>
+</div>`;
+
   $('#mb').innerHTML=`<div class="full"><b>${esc(o.Customer)}</b> · ${esc(o.Uraian)} · ${esc(o.Ukuran)} · PO/SJ ${esc(o.PO_SJ)}<div class="us" id="hksum"></div></div>${blk(1)}${blk(2)}${blk(3)}`;
   frm.dataset.id='';frm.dataset.no=no;frm.dataset.oid=oid;frm.dataset.multi='';frm.dataset.mode='hk';dlg.classList.add('wide');openD();hkSum();
 }
@@ -556,7 +592,7 @@ function hkSum(){
 frm.addEventListener('input',()=>{if(frm.dataset.mode==='hk')hkSum()});
 function saveHKf(e){
   const d={};
-  [1,2,3].forEach(n=>['Jml','Kotak','NoSJ','TglSJ','Koreksi'].forEach(f=>{
+  [1,2,3].forEach(n=>['Jml','NoSJ','TglSJ','Koreksi','Ket'].forEach(f=>{
     let v=frm.elements['L'+n+'_'+f].value.trim();
     if(['Jml','Kotak','Koreksi'].includes(f))v=v===''?'':Number(v);
     d['L'+n+'_'+f]=v}));
