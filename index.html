@@ -67,6 +67,10 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .dg b{font-weight:500;padding:8px 0;border-radius:8px;cursor:pointer;font-size:13px}.dg b:hover{background:rgba(79,70,229,.12)}
 .dg b.td{color:var(--ac);font-weight:700}.dg b.sel{background:var(--ac);color:#fff}
 .df{text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}.df a{color:var(--ac);font-weight:600;cursor:pointer}
+.pg{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 12px}
+.pb{display:flex;gap:6px;align-items:center}.pb span{color:var(--mut)}
+.pb button{min-width:34px;height:34px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;cursor:pointer;font:inherit}
+.pb button:hover:not(:disabled){border-color:var(--ac);color:var(--ac)}.pb button.on{background:var(--ac);border-color:var(--ac);color:#fff}.pb button:disabled{opacity:.4;cursor:default}
 dialog.wide{width:min(920px,96vw)}
 .it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
 .it a{color:var(--bad);cursor:pointer;text-align:center;font-weight:700}
@@ -76,7 +80,7 @@ dialog.wide{width:min(920px,96vw)}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none}.toast.s{opacity:1}
 .empty{text-align:center;color:var(--mut);padding:40px}
 @media(max-width:820px){aside{position:fixed;z-index:9;left:-250px}aside.o{left:0}.burger{display:block}main{padding:16px}.mb{grid-template-columns:1fr}}
-@media print{aside,.tools,.fb,.burger,.act{display:none!important}main{padding:0}}
+@media print{aside,.tools,.fb,.pb,.burger,.act{display:none!important}main{padding:0}}
 </style>
 </head>
 <body>
@@ -143,7 +147,7 @@ const PAGES={
 let D={Customer:[],Orders:[],HasilKerja1:[],HasilKerja2:[],HasilKerja3:[]},page='dashboard',q='',R={from:'',to:'',cust:''};
 
 function nav(){let g='',h='';for(const k in PAGES){const p=PAGES[k];if(p.g!==g){g=p.g;h+=`<div class="nav-g">${g}</div>`}h+=`<a class="${k===page?'on':''}" onclick="go('${k}')"><span>${p.ic}</span>${p.t}</a>`}$('#nav').innerHTML=h}
-function go(p){page=p;q='';F={status:'',per:'',cust:''};sb.classList.remove('o');render()}
+function go(p){page=p;q='';PG=1;F={status:'',per:'',cust:''};sb.classList.remove('o');render()}
 let TOKEN='',ME={};
 function store(k,v){try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}
 function api(fn,args,ok){google.script.run.withSuccessHandler(ok||(()=>{})).withFailureHandler(e=>{if(/SESSION/.test(e.message))showLogin('Sesi berakhir, silakan masuk lagi.');else toast(e.message)})[fn](TOKEN,...args)}
@@ -183,29 +187,45 @@ function cell(k,t,v){
 let F={status:'',per:'',cust:''};
 const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const perLbl=v=>BLN[+v.slice(5,7)-1]+' '+v.slice(0,4);
+const norm=x=>String(x??'').toLowerCase().replace(/[^a-z0-9]/g,'');
 function rowsF(){
-  const p=PAGES[page],k=q.toLowerCase();
-  return D[p.sheet].filter(r=>(!k||(JSON.stringify(r)+(r.OrderID?ordLabel(r.OrderID):'')).toLowerCase().includes(k))
-    &&(!F.status||r.Status===F.status)&&(!F.per||String(r.Tgl).slice(0,7)===F.per)&&(!F.cust||r.Customer===F.cust));
+  const p=PAGES[page],tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+  return D[p.sheet].filter(r=>{
+    if(tk.length){const h=norm(Object.values(r).join(' ')+' '+(r.OrderID?ordLabel(r.OrderID):''));if(!tk.every(t=>h.includes(t)))return false}
+    return (!F.status||r.Status===F.status)&&(!F.per||String(r.Tgl).slice(0,7)===F.per)&&(!F.cust||r.Customer===F.cust);
+  });
 }
 function tableView(){
   const p=PAGES[page],has=k=>p.f.some(f=>f[0]===k);
   const pers=has('Tgl')?[...new Set(D[p.sheet].map(r=>String(r.Tgl).slice(0,7)).filter(x=>/^\d{4}-\d\d$/.test(x)))].sort().reverse():[];
-  const sel=(opts,cur,set,all)=>`<select onchange="${set}=this.value;fill()"><option value="">${all}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
-  $('#view').innerHTML=`<div class="tools"><button class="btn g" onclick="csvT()">⭳ Ekspor CSV</button><button class="btn g" onclick="print()">⭳ Unduh PDF</button><button class="btn g" onclick="print()">⎙ Cetak</button></div>
-  <div class="card fb"><input id="qs" placeholder="Cari…" value="${esc(q)}" oninput="q=this.value;fill()">
+  const sel=(opts,cur,set,all)=>`<select onchange="${set}=this.value;PG=1;fill()"><option value="">${all}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  $('#view').innerHTML=`<div class="tools"><button class="btn g" onclick="csvT()">⭳ Ekspor CSV</button><button class="btn g" onclick="printAll()">⭳ Unduh PDF</button><button class="btn g" onclick="printAll()">⎙ Cetak</button></div>
+  <div class="card fb"><input id="qs" placeholder="${page==='orders'?'Cari customer, uraian, nomor PO / SJ…':'Cari…'}" value="${esc(q)}" oninput="q=this.value;PG=1;fill()">
    ${has('Status')?sel(STATUS.map(x=>[x,x]),F.status,'F.status','Semua Status'):''}
    ${pers.length?sel(pers.map(v=>[v,perLbl(v)]),F.per,'F.per','Semua Periode'):''}
    ${has('Customer')?sel(D.Customer.map(c=>[c.Nama,c.Nama]),F.cust,'F.cust','Semua Customer'):''}
-   <a class="rs" onclick="q='';F={status:'',per:'',cust:''};tableView()">Reset</a></div>
+   <a class="rs" onclick="q='';PG=1;F={status:'',per:'',cust:''};tableView()">Reset</a></div>
   <div class="card tw" style="padding:6px" id="tb"></div>`;
   fill();
 }
+let PG=1,ALL=false;const PS=10;
 function fill(){
-  const p=PAGES[page],rows=rowsF();
+  const p=PAGES[page],all=rowsF(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
+  PG=Math.min(Math.max(1,PG),pages);
+  const st=(PG-1)*ps,rows=all.slice(st,st+ps);
   $('#tb').innerHTML=`<table><tr>${p.f.map(f=>`<th class="${f[2]==='number'?'n':''}">${f[1]}</th>`).join('')}<th></th></tr>
-  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+1}" class="empty">Tidak ada data</td></tr>`}</table><div class="cnt">${rows.length} data</div>`;
+  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+1}" class="empty">Tidak ada data</td></tr>`}</table>
+  <div class="pg"><span class="cnt">${all.length?`Menampilkan ${st+1}–${st+rows.length} dari ${all.length} data`:'0 data'}</span><div class="pb">${pager(pages)}</div></div>`;
 }
+function pager(n){
+  if(n<=1)return '';
+  const a=[...new Set([1,n,PG-1,PG,PG+1])].filter(x=>x>=1&&x<=n).sort((x,y)=>x-y);
+  let h=`<button ${PG===1?'disabled':''} onclick="gp(${PG-1})">‹</button>`,last=0;
+  a.forEach(x=>{if(x-last>1)h+='<span>…</span>';h+=`<button class="${x===PG?'on':''}" onclick="gp(${x})">${x}</button>`;last=x});
+  return h+`<button ${PG===n?'disabled':''} onclick="gp(${PG+1})">›</button>`;
+}
+function gp(n){PG=n;fill();$('#tb').scrollIntoView({block:'start',behavior:'smooth'})}
+function printAll(){ALL=true;fill();setTimeout(()=>{print();ALL=false;fill()},100)}
 function csvT(){
   const p=PAGES[page],rows=rowsF(),ks=p.f.map(f=>f[0]);
   const t=[p.f.map(f=>f[1]).join(',')].concat(rows.map(r=>ks.map(k=>'"'+String(k==='OrderID'?ordLabel(r[k]):(r[k]??'')).replace(/"/g,'""')+'"').join(','))).join('\n');
