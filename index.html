@@ -545,26 +545,25 @@ function hkFill(){
     .sort((a,b)=>String(b.s.No).localeCompare(String(a.s.No),undefined,{numeric:true}));
 
   const c='style="text-align:center"';
-  $('#tb').innerHTML=`<table style="table-layout:fixed;min-width:1050px">
-  <colgroup><col style="width:105px"><col style="width:130px"><col><col style="width:110px"><col style="width:75px">
-  <col style="width:55px"><col style="width:55px"><col style="width:55px"><col style="width:60px"><col style="width:65px"><col style="width:90px"><col style="width:120px"></colgroup>
-  <tr><th>No. SPK</th><th>Customer</th><th>Uraian Barang</th><th>PO/SJ</th><th ${c}>Order</th>
-  <th ${c}>L1</th><th ${c}>L2</th><th ${c}>L3</th><th ${c}>Kor</th><th ${c}>Sisa</th><th>Status</th><th></th></tr>
+  const stc={Baru:'#4338ca',Proses:'#b45309',Selesai:'#047857'};
+  $('#tb').innerHTML=`<table style="table-layout:fixed;min-width:900px">
+  <colgroup><col style="width:140px"><col><col style="width:70px"><col style="width:55px"><col style="width:55px"><col style="width:55px"><col style="width:55px"><col style="width:65px"><col style="width:90px"><col style="width:110px"></colgroup>
+  <tr><th style="white-space:normal;line-height:1.6">No. SPK<br>PO/SJ</th><th style="white-space:normal;line-height:1.6">Customer<br>Uraian Barang</th>
+  <th ${c}>Order</th><th ${c}>L1</th><th ${c}>L2</th><th ${c}>L3</th><th ${c}>Kor</th><th ${c}>Sisa</th><th ${c}>Status</th><th></th></tr>
   ${rows.map(({s,o,h})=>{
     const kor=[1,2,3].reduce((a,n)=>a+Number(h?.['L'+n+'_Koreksi']||0),0);
-    const sis=sisa(o); // total semua SPK, konsisten dengan Order & Dashboard
-    return `<tr>
-    <td><b>${esc(s.No)}</b></td>
-    <td style="white-space:normal">${esc(o.Customer)}</td>
-    <td style="white-space:normal;line-height:1.4;word-break:break-word">${esc(o.Uraian)}</td>
-    <td>${esc(o.PO_SJ)}</td>
+    const sis=sisa(o);
+    const cc=c.slice(0,-1);
+    return `<tr style="vertical-align:middle">
+    <td style="white-space:normal;line-height:1.5"><b style="font-size:15px">${esc(s.No)}</b><br>${esc(o.PO_SJ)}</td>
+    <td style="white-space:normal;line-height:1.5;word-break:break-word;padding-right:10px">${esc(o.Customer)}<br>${esc(o.Uraian)}</td>
     <td ${c}>${num(o.Jumlah)}</td>
     <td ${c}>${num(h?.L1_Jml)}</td><td ${c}>${num(h?.L2_Jml)}</td><td ${c}>${num(h?.L3_Jml)}</td>
-    <td ${c.slice(0,-1)};font-weight:700;color:var(--warn)">${num(kor)}</td>
-    <td ${c.slice(0,-1)};font-weight:700">${num(sis)}</td>
-    <td><span class="badge ${o.Status}">${esc(o.Status)}</span></td>
+    <td ${cc};font-weight:700;color:var(--warn)">${num(kor)}</td>
+    <td ${cc};font-weight:700">${num(sis)}</td>
+    <td ${cc};font-weight:700;color:${stc[o.Status]||'inherit'}">${esc(o.Status)}</td>
     <td class="act"><a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">${h?'Edit':'Isi'}</a>${h?`<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`:''}</td>
-    </tr>`}).join('')||'<tr><td colspan="12" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}
+    </tr>`}).join('')||'<tr><td colspan="10" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}
   </table>`;
 }
 
