@@ -100,6 +100,13 @@ dialog.wide{width:min(920px,96vw)}
 @media(max-width:820px){.it{grid-template-columns:1fr 1fr}.it .u{grid-column:1/-1}.ith{display:none}}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none}.toast.s{opacity:1}
 .empty{text-align:center;color:var(--mut);padding:40px}
+#spkc{color:var(--ac);margin-left:6px}
+.spkl{max-height:300px;overflow:auto;border:1px solid var(--bd);border-radius:10px;margin:6px 0 8px}
+.spi{display:grid;grid-template-columns:22px 1.1fr 3fr 2.2fr auto;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--bd);cursor:pointer;font-size:13px}
+.spi:last-child{border-bottom:0}.spi:hover{background:rgba(129,140,248,.08)}.spi.on{background:rgba(79,70,229,.12)}
+.spi input{width:auto;padding:0;pointer-events:none;accent-color:var(--ac)}
+.spi .sc{font-weight:600}.spi .sm{color:var(--mut);font-size:12px}
+@media(max-width:820px){.spi{grid-template-columns:22px 1fr}.spi .sm,.spi .badge{grid-column:2;justify-self:start}}
 @media(max-width:820px){aside{position:fixed;z-index:9;left:-250px}aside.o{left:0}.burger{display:block}main{padding:16px}.mb{grid-template-columns:1fr}}
 @media print{aside,.tools,.fb,.pg,.burger,.act{display:none!important}main{padding:0}}
 </style>
@@ -170,13 +177,14 @@ const PAGES={
   dashboard:{t:'Dashboard',s:'Ringkasan produksi & penjualan',ic:'◧',g:'Menu'},
   orders:{t:'Order',s:'Daftar PO / Surat Jalan',ic:'▤',g:'Menu',sheet:'Orders',f:[['Tgl','Tanggal','date'],['Customer','Customer','customer'],['Uraian','Uraian','text','full'],['Ukuran','Ukuran'],['Jumlah','Jumlah','number'],['Satuan','Satuan'],['PO_SJ','PO/SJ'],['Harga','Harga PO','number'],['Status','Status','status']]},
   customer:{t:'Customer',s:'Data pelanggan',ic:'☻',g:'Menu',sheet:'Customer',f:[['Nama','Nama Customer','text','full'],['Telp','Telepon'],['Alamat','Alamat','text','full']]},
+  spk:{t:'SPK',s:'Surat Perintah Kerja',ic:'☰',g:'Produksi'},
   hk1:{t:'Hasil Kerja 1',s:'Tahap produksi pertama',ic:'①',g:'Produksi',sheet:'HasilKerja1',f:HK},
   hk2:{t:'Hasil Kerja 2',s:'Tahap produksi kedua',ic:'②',g:'Produksi',sheet:'HasilKerja2',f:HK},
   hk3:{t:'Hasil Kerja 3',s:'Tahap produksi ketiga',ic:'③',g:'Produksi',sheet:'HasilKerja3',f:HK},
   laporan:{t:'Laporan',s:'Rekap order & progres produksi',ic:'▥',g:'Lainnya'},
   pengguna:{t:'Pengguna',s:'Akun yang bisa masuk ke aplikasi',ic:'⚿',g:'Lainnya'}
 };
-let D={Customer:[],Orders:[],HasilKerja1:[],HasilKerja2:[],HasilKerja3:[]},page='dashboard',q='',R={from:'',to:'',cust:''};
+let D={Customer:[],Orders:[],SPK:[],HasilKerja1:[],HasilKerja2:[],HasilKerja3:[]},page='dashboard',q='',R={from:'',to:'',cust:''};
 
 function nav(){let g='',h='';for(const k in PAGES){const p=PAGES[k];if(p.g!==g){g=p.g;h+=`<div class="nav-g">${g}</div>`}h+=`<a class="${k===page?'on':''}" onclick="go('${k}')"><span>${p.ic}</span>${p.t}</a>`}$('#nav').innerHTML=h}
 function go(p){page=p;q='';PG=1;F={status:'',per:'',cust:''};sb.classList.remove('o');render()}
@@ -191,7 +199,7 @@ function render(){
   nav();const p=PAGES[page];$('#ttl').textContent=p.t;$('#sub').textContent=p.s;
   $('#topact').innerHTML=p.sheet?`<button class="btn" onclick="${page==='orders'?'editPO()':'edit()'}">+ Tambah</button>`:'';
   if(page==='customer')$('#topact').insertAdjacentHTML('afterbegin','<button class="btn g" onclick="syncC()">⟳ Sinkron dari Order</button> ');
-  ({dashboard,laporan,pengguna}[page]||tableView)();
+  ({dashboard,laporan,pengguna,spk:spkView}[page]||tableView)();
 }
 
 function bars(items,max){return items.map(([l,v,t])=>`<div class="bar"><div class="r"><span>${esc(l)}</span><b>${t}</b></div><div class="t"><div class="f" style="width:${max?Math.min(100,v/max*100):0}%"></div></div></div>`).join('')||'<div class="empty">Belum ada data</div>'}
@@ -323,7 +331,7 @@ function dpR(b){
    <div class="dg">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(x=>`<u>${x}</u>`).join('')}${c}</div><div class="df"><a onmousedown="dpP(this,'${t}',event)">Hari ini</a></div>`;
 }
 function dpN(el,d,e){e.preventDefault();const b=el.closest('.dp');b._m+=d;if(b._m<0){b._m=11;b._y--}if(b._m>11){b._m=0;b._y++}dpR(b)}
-function dpP(el,v,e){e.preventDefault();const b=el.closest('.dp');b.querySelector('[type=hidden]').value=v;b.querySelector('.dpi').value=dFmt(v);b.querySelector('.cl').style.display='none'}
+function dpP(el,v,e){e.preventDefault();const b=el.closest('.dp');b.querySelector('[type=hidden]').value=v;b.querySelector('.dpi').value=dFmt(v);b.querySelector('.cl').style.display='none';if(frm.dataset.mode==='spk')spkPrev()}
 
 function editPO(){
   $('#mh').textContent='Tambah Order (1 PO, maks. 10 item)';
@@ -351,6 +359,7 @@ function saveMulti(e){
   api('saveBatch',['Orders',items.map(i=>({...h,...i}))],n=>{toast(n+' item tersimpan ✓');load()});
 }
 frm.onsubmit=e=>{
+  if(frm.dataset.mode==='spk')return saveSPKf(e);
   if(frm.dataset.mode)return frm.dataset.mode==='pw'?savePw():saveU();
   if(frm.dataset.multi)return saveMulti(e);
   const p=PAGES[page],o=Object.fromEntries(new FormData(frm));o.ID=frm.dataset.id;
@@ -381,6 +390,77 @@ function csv(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
 }
 function syncC(){api('syncCustomers',[],n=>{toast(n+' customer baru diimpor');load()})}
+
+/* ---------- SPK (Surat Perintah Kerja) ---------- */
+let SEL=new Set();
+const ordOf=id=>D.Orders.find(x=>x.ID===id);
+const dSl=v=>{const[y,m,d]=String(v||'').split('-');return d?d+'/'+m+'/'+y:''};
+function spkGroups(){const g={};(D.SPK||[]).forEach(r=>{const k=String(r.No);(g[k]=g[k]||{no:k,tgl:r.Tgl,items:[]}).items.push(r)});return Object.values(g).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}))}
+function nextNo(tgl){const pre=String(tgl).slice(0,7);let m=0;(D.SPK||[]).forEach(r=>{const n=String(r.No);if(n.indexOf(pre+'-')===0)m=Math.max(m,parseInt(n.slice(pre.length+1),10)||0)});return pre+'-'+String(m+1).padStart(3,'0')}
+function spkView(){
+  $('#topact').innerHTML='<button class="btn" onclick="editSPK()">+ Buat SPK</button>';
+  $('#view').innerHTML=`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ…" value="${esc(q)}" oninput="q=this.value;spkFill()"><a class="rs" onclick="q='';spkView()">Reset</a></div>
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div></div>`;
+  spkFill();
+}
+function spkFill(){
+  const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+  const gs=spkGroups().map(g=>({...g,os:g.items.map(i=>ordOf(i.OrderID)).filter(Boolean)}))
+    .filter(g=>!tk.length||tk.every(t=>norm(g.no+' '+dSl(g.tgl)+' '+g.os.map(o=>[o.Customer,o.Uraian,o.PO_SJ].join(' ')).join(' ')).includes(t)));
+  $('#tb').innerHTML=`<table><tr><th>No. SPK</th><th>Tanggal</th><th>Customer</th><th class="n">Item</th><th></th></tr>
+  ${gs.map(g=>`<tr><td><b>${esc(g.no)}</b></td><td>${esc(dSl(g.tgl))}</td><td style="white-space:normal;max-width:360px">${esc([...new Set(g.os.map(o=>o.Customer))].join(', '))}</td><td class="n">${g.items.length}</td><td class="act"><a onclick="printSPK('${esc(g.no)}')">Cetak</a><a onclick="editSPK('${esc(g.no)}')">Edit</a><a class="d" onclick="delSPK('${esc(g.no)}')">Hapus</a></td></tr>`).join('')||'<tr><td colspan="5" class="empty">Belum ada SPK</td></tr>'}</table>`;
+}
+function editSPK(no){
+  const g=no?spkGroups().find(x=>x.no===no):null,tgl=g?g.tgl:today();
+  SEL=new Set(g?g.items.map(i=>i.OrderID).filter(id=>ordOf(id)):[]);
+  $('#mh').textContent=g?'Edit SPK '+no:'Buat SPK';
+  $('#mb').innerHTML=`<div><label>Tanggal</label>${dpBox('Tgl',tgl)}</div>
+   <div><label>No. SPK (otomatis)</label><input id="spkno" readonly value="${esc(g?no:nextNo(tgl))}"></div>
+   <div class="full"><label>Pilih Order untuk SPK<span id="spkc"></span></label>
+    <input id="spkq" placeholder="Cari customer, uraian, nomor PO / SJ…" oninput="spkL()" onkeydown="if(event.key==='Enter')event.preventDefault()">
+    <div class="spkl" id="spkl"></div>
+    <div class="us">Data diambil otomatis dari Order. Jumlah order tidak berkurang.</div></div>`;
+  frm.dataset.id=no||'';frm.dataset.multi='';frm.dataset.mode='spk';dlg.classList.add('wide');
+  spkL();openD();
+}
+function spkPrev(){if(frm.dataset.id)return;$('#spkno').value=nextNo(frm.elements.Tgl.value)}
+function spkL(){
+  const tk=($('#spkq').value||'').toLowerCase().split(/\s+/).map(norm).filter(Boolean),used={};
+  (D.SPK||[]).forEach(r=>{const a=used[r.OrderID]=used[r.OrderID]||[];if(!a.includes(r.No))a.push(r.No)});
+  const os=[...D.Orders].reverse().filter(o=>SEL.has(o.ID)||!tk.length||tk.every(t=>norm([o.Customer,o.Uraian,o.Ukuran,o.PO_SJ].join(' ')).includes(t)));
+  $('#spkl').innerHTML=os.map(o=>`<div class="spi ${SEL.has(o.ID)?'on':''}" onclick="spkT('${o.ID}',this)"><input type="checkbox" ${SEL.has(o.ID)?'checked':''}><span class="sc">${esc(o.Customer)}</span><span>${esc(o.Uraian)}</span><span class="sm">${esc(o.Ukuran)} · ${num(o.Jumlah)} ${esc(o.Satuan)} · ${esc(o.PO_SJ)}</span>${used[o.ID]?`<span class="badge Proses">SPK ${esc(used[o.ID].join(', '))}</span>`:'<span></span>'}</div>`).join('')||'<div class="empty">Tidak ada order</div>';
+  spkC();
+}
+function spkT(id,el){SEL.has(id)?SEL.delete(id):SEL.add(id);el.classList.toggle('on',SEL.has(id));el.querySelector('input').checked=SEL.has(id);spkC()}
+function spkC(){$('#spkc').textContent=SEL.size?'— '+SEL.size+' dipilih':''}
+function saveSPKf(e){
+  if(!SEL.size){e.preventDefault();toast('Pilih minimal 1 order');return}
+  api('saveSPK',[frm.dataset.id,frm.elements.Tgl.value,[...SEL]],no=>{toast('SPK '+no+' tersimpan ✓');load()});
+}
+function delSPK(no){if(confirm('Hapus SPK '+no+'? Data order tidak berubah.'))api('deleteSPK',[no],()=>{toast('SPK terhapus');load()})}
+function printSPK(no){
+  const g=spkGroups().find(x=>x.no===no);if(!g)return;
+  const os=g.items.map(i=>ordOf(i.OrderID)).filter(Boolean),n=Math.max(12,os.length);
+  let body=os.map(o=>`<tr><td>${esc(o.Customer)}</td><td>${esc(o.Uraian)}</td><td>${esc(o.Ukuran)}</td><td class="n">${num(o.Jumlah)} ${esc(o.Satuan)}</td><td>${esc(o.PO_SJ)}</td></tr>`).join('');
+  for(let i=os.length;i<n;i++)body+='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>';
+  const h=`<!doctype html><html><head><meta charset="utf-8"><title>SPK ${esc(no)}</title><style>
+@page{size:A4;margin:14mm}
+body{font-family:"Times New Roman",Cambria,serif;color:#000;margin:0}
+h2{text-align:center;font-size:17px;font-weight:400;margin:0 0 10px}
+.meta{display:flex;justify-content:space-between;font-size:15px;margin-bottom:4px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{border:1px solid #000;padding:3px 6px;height:28px;font-size:14px;font-weight:400;text-align:left;vertical-align:middle;overflow:hidden}
+th.n,td.n{text-align:right}
+</style></head><body>
+<h2>SURAT PERINTAH KERJA</h2>
+<div class="meta"><span>Tanggal : ${esc(dSl(g.tgl))}</span><span>No : ${esc(no)}</span></div>
+<table><colgroup><col style="width:15%"><col style="width:42%"><col style="width:8%"><col style="width:13%"><col style="width:22%"></colgroup>
+<tr><th>Customer</th><th>Uraian</th><th>Uk</th><th class="n">Jumlah</th><th>Po/Sj</th></tr>${body}</table>
+</body></html>`;
+  const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';document.body.appendChild(f);
+  const d=f.contentWindow.document;d.open();d.write(h);d.close();
+  setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),1500)},300);
+}
 
 /* ---------- Pengguna ---------- */
 function pengguna(){
