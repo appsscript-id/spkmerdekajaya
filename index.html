@@ -95,11 +95,11 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .chip{padding:5px 14px;border-radius:99px;border:1px solid var(--bd);cursor:pointer;font-size:12px;font-weight:600;color:var(--mut)}
 .chip:hover{border-color:var(--ac);color:var(--ac)}.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
 dialog.wide{width:min(920px,96vw)}
-.it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
+.it{display:grid;grid-template-columns:2.2fr 1fr .9fr .7fr 1.2fr 1.6fr 24px;gap:8px;margin-bottom:8px;align-items:center}
 .it a{color:var(--bad);cursor:pointer;text-align:center;font-weight:700}
-.ith{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:6px}
+.ith{display:grid;grid-template-columns:2.2fr 1fr .9fr .7fr 1.2fr 1.6fr 24px;gap:8px;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:6px}
 #cnt{color:var(--ac);margin-left:6px}
-@media(max-width:820px){.it{grid-template-columns:1fr 1fr}.it .u{grid-column:1/-1}.ith{display:none}}
+@media(max-width:820px){.it{grid-template-columns:1fr 1fr}.it .u,.it .k{grid-column:1/-1}.ith{display:none}}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none;z-index:99}.toast.s{opacity:1}
 .empty{text-align:center;color:var(--mut);padding:40px}
 #spkc{color:var(--ac);margin-left:6px}
@@ -221,7 +221,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 const STATUS=['Baru','Proses','Selesai'];
 const PAGES={
   dashboard:{t:'Dashboard',s:'Ringkasan produksi & penjualan',ic:'◧',g:'Menu'},
-  orders:{t:'Order',s:'Daftar PO / Surat Jalan',ic:'▤',g:'Menu',sheet:'Orders',f:[['Tgl','Tanggal','date'],['Customer','Customer','customer'],['Uraian','Uraian','text','full'],['Ukuran','Ukuran'],['Jumlah','Jumlah','number'],['Satuan','Satuan'],['PO_SJ','PO/SJ'],['Harga','Harga PO','number'],['Status','Status','status']]},
+  orders:{t:'Order',s:'Daftar PO / Surat Jalan',ic:'▤',g:'Menu',sheet:'Orders',f:[['Tgl','Tanggal','date'],['Customer','Customer','customer'],['Uraian','Uraian','text','full'],['Ukuran','Ukuran'],['Jumlah','Jumlah','number'],['Satuan','Satuan'],['PO_SJ','PO/SJ'],['Harga','Harga PO','number'],['Keterangan','Keterangan','text','full'],['Status','Status','status']]},
   customer:{t:'Customer',s:'Data pelanggan',ic:'☻',g:'Menu',sheet:'Customer',f:[['Nama','Nama Customer','text','full'],['Telp','Telepon'],['Alamat','Alamat','text','full']]},
   spk:{t:'SPK',s:'Surat Perintah Kerja',ic:'☰',g:'Produksi'},
   hk:{t:'Hasil Kerja',s:'Laporan hasil kerja dari SPK',ic:'①',g:'Produksi'},
@@ -399,20 +399,20 @@ function editPO(){
    <div><label>PO/SJ</label><input name="PO_SJ" required></div>
    <div><label>Status</label><select name="Status">${STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
    <div class="full"><label>Item Order<span id="cnt"></span></label>
-    <div class="ith"><span>Uraian</span><span>Ukuran</span><span>Jumlah</span><span>Satuan</span><span>Harga PO</span><span></span></div>
+    <div class="ith"><span>Uraian</span><span>Ukuran</span><span>Jumlah</span><span>Satuan</span><span>Harga PO</span><span>Keterangan</span><span></span></div>
     <div id="items"></div><button type="button" class="btn g" onclick="addItem()">+ Tambah item</button></div>`;
   frm.dataset.id='';frm.dataset.multi='1';frm.dataset.mode='';dlg.classList.add('wide');addItem();openD();
 }
 function addItem(){
   const box=$('#items');if(box.children.length>=10){toast('Maksimal 10 item per PO');return}
   const d=document.createElement('div');d.className='it';
-  d.innerHTML=`<input name="Uraian" class="u"><input name="Ukuran"><input name="Jumlah" type="number" step="any"><input name="Satuan"><input name="Harga" type="number" step="any"><a title="Hapus item" onclick="if($('#items').children.length>1){this.parentNode.remove();cnt()}">✕</a>`;
+  d.innerHTML=`<input name="Uraian" class="u"><input name="Ukuran"><input name="Jumlah" type="number" step="any"><input name="Satuan"><input name="Harga" type="number" step="any"><input name="Keterangan" class="k"><a title="Hapus item" onclick="if($('#items').children.length>1){this.parentNode.remove();cnt()}">✕</a>`;
   box.appendChild(d);cnt();
 }
 function cnt(){$('#cnt').textContent=$('#items').children.length+'/10'}
 function saveMulti(e){
   const v=(d,k)=>d.querySelector(`[name=${k}]`).value;
-  const items=[...$('#items').children].map(d=>({Uraian:v(d,'Uraian').trim(),Ukuran:v(d,'Ukuran'),Jumlah:Number(v(d,'Jumlah')||0),Satuan:v(d,'Satuan'),Harga:Number(v(d,'Harga')||0)})).filter(i=>i.Uraian||i.Jumlah);
+  const items=[...$('#items').children].map(d=>({Uraian:v(d,'Uraian').trim(),Ukuran:v(d,'Ukuran'),Jumlah:Number(v(d,'Jumlah')||0),Satuan:v(d,'Satuan'),Harga:Number(v(d,'Harga')||0),Keterangan:v(d,'Keterangan').trim()})).filter(i=>i.Uraian||i.Jumlah);
   if(!items.length){e.preventDefault();toast('Isi minimal 1 item');return}
   const h={Tgl:frm.elements.Tgl.value,Customer:frm.elements.Customer.value,PO_SJ:frm.elements.PO_SJ.value,Status:frm.elements.Status.value};
   api('saveBatch',['Orders',items.map(i=>({...h,...i}))],n=>{toast(n+' item tersimpan ✓');load()});
