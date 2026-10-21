@@ -183,12 +183,12 @@ function dashboard(){
   const by={};O.filter(o=>unitOf(o)===DU).forEach(o=>by[o.Customer]=(by[o.Customer]||0)+Number(o.Jumlah||0));
   const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const rec=O.slice(-6).reverse();
-  const total=units.length?`<div class="v">${fm(U[units[0]],units[0])}</div>${units.length>1?`<div class="us">${units.slice(1).map(u=>esc(fm(U[u],u))).join(' · ')}</div>`:''}`:'<div class="v">0</div>';
+  const unitCards=units.map(u=>`<div class="card kpi"><div class="l">Total ${esc(uLbl(u)||'tanpa satuan')}</div><div class="v">${fm(U[u],u)}</div><div class="us">${num(cnt[u])} order</div></div>`).join('');
   $('#view').innerHTML=`<div class="grid">
    <div class="card kpi"><div class="l">Total Order</div><div class="v">${num(O.length)}</div></div>
-   <div class="card kpi"><div class="l">Total Jumlah</div>${total}</div>
    <div class="card kpi"><div class="l">Nilai PO</div><div class="v">${rp(nilai)}</div></div>
    <div class="card kpi"><div class="l">Order Aktif</div><div class="v">${num(aktif)}</div></div></div>
+   <div class="grid">${unitCards||'<div class="card kpi"><div class="l">Total Jumlah</div><div class="v">0</div></div>'}</div>
    <div class="two"><div class="card"><h3>Progres Produksi</h3>${bars(st,mTot)}<div class="us" style="margin-top:12px">Hasil kerja dalam meter, persentase terhadap total order satuan m.</div></div>
    <div class="card"><h3>Top Customer (${esc(uLbl(DU)||'tanpa satuan')})</h3>
     <div class="chips">${units.map((u,i)=>`<span class="chip ${u===DU?'on':''}" onclick="setDU(${i})">${esc(uLbl(u)||'tanpa satuan')}</span>`).join('')}</div>
