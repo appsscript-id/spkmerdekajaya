@@ -112,6 +112,11 @@ dialog.wide{width:min(920px,96vw)}
 @media(max-width:820px){aside{position:fixed;z-index:9;left:-250px}aside.o{left:0}.burger{display:block}main{padding:16px}.mb{grid-template-columns:1fr}}
 @media print{aside,.tools,.fb,.pg,.burger,.act{display:none!important}main{padding:0}}
 
+/* ===== Hasil Kerja ===== */
+.hk{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.hk span{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
+@media(max-width:820px){.hk{grid-template-columns:1fr 1fr}}
+
 /* ===== Pengaturan: pilihan tampilan form ===== */
 .fso{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .fo{border:2px solid var(--bd);border-radius:12px;padding:12px;cursor:pointer;text-align:center}
@@ -185,7 +190,7 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.1.0';
+const VER='1.2.0';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -204,20 +209,17 @@ const rp=n=>'Rp '+num(Math.round(n));
 const sum=(a,f)=>a.reduce((t,x)=>t+Number(f(x)||0),0);
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const STATUS=['Baru','Proses','Selesai'];
-const HK=[['Tgl','Tanggal','date'],['OrderID','Order','order'],['Operator','Operator'],['Hasil','Hasil (m)','number'],['Reject','Reject (m)','number'],['Catatan','Catatan']];
 const PAGES={
   dashboard:{t:'Dashboard',s:'Ringkasan produksi & penjualan',ic:'◧',g:'Menu'},
   orders:{t:'Order',s:'Daftar PO / Surat Jalan',ic:'▤',g:'Menu',sheet:'Orders',f:[['Tgl','Tanggal','date'],['Customer','Customer','customer'],['Uraian','Uraian','text','full'],['Ukuran','Ukuran'],['Jumlah','Jumlah','number'],['Satuan','Satuan'],['PO_SJ','PO/SJ'],['Harga','Harga PO','number'],['Status','Status','status']]},
   customer:{t:'Customer',s:'Data pelanggan',ic:'☻',g:'Menu',sheet:'Customer',f:[['Nama','Nama Customer','text','full'],['Telp','Telepon'],['Alamat','Alamat','text','full']]},
   spk:{t:'SPK',s:'Surat Perintah Kerja',ic:'☰',g:'Produksi'},
-  hk1:{t:'Hasil Kerja 1',s:'Tahap produksi pertama',ic:'①',g:'Produksi',sheet:'HasilKerja1',f:HK},
-  hk2:{t:'Hasil Kerja 2',s:'Tahap produksi kedua',ic:'②',g:'Produksi',sheet:'HasilKerja2',f:HK},
-  hk3:{t:'Hasil Kerja 3',s:'Tahap produksi ketiga',ic:'③',g:'Produksi',sheet:'HasilKerja3',f:HK},
+  hk:{t:'Hasil Kerja',s:'Laporan hasil kerja dari SPK',ic:'①',g:'Produksi'},
   laporan:{t:'Laporan',s:'Rekap order & progres produksi',ic:'▥',g:'Lainnya'},
   pengguna:{t:'Pengguna',s:'Akun yang bisa masuk ke aplikasi',ic:'⚿',g:'Lainnya'},
   pengaturan:{t:'Pengaturan',s:'Tampilan form & info aplikasi',ic:'⚙',g:'Lainnya'}
 };
-let D={Customer:[],Orders:[],SPK:[],HasilKerja1:[],HasilKerja2:[],HasilKerja3:[]},page='dashboard',q='',R={from:'',to:'',cust:''};
+let D={Customer:[],Orders:[],SPK:[],HasilKerja:[]},page='dashboard',q='',R={from:'',to:'',cust:''};
 
 /* ---------- Pengaturan tampilan form (disimpan di browser) ---------- */
 const FSO=[['std','Standar','Jendela di tengah layar'],['compact','Kompak','Jendela ramping & rapat'],['side','Panel Samping','Form muncul dari kanan'],['sheet','Lembar Bawah','Form naik dari bawah'],['full','Layar Penuh','Form memenuhi layar']];
@@ -233,11 +235,19 @@ function load(){api('getAll',[],d=>{D=d;render()})}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('s');setTimeout(()=>t.classList.remove('s'),2600)}
 const ordLabel=id=>{const o=D.Orders.find(x=>x.ID===id);return o?`${o.Customer} · ${o.Uraian}`:'-'};
 
+/* ---------- Helper Hasil Kerja: total per order & sisa ---------- */
+let TT={};
+const HKT=()=>{const m={};(D.HasilKerja||[]).forEach(r=>[1,2,3].forEach(n=>{m[r.OrderID]=(m[r.OrderID]||0)+Number(r['L'+n+'_Jml']||0)+Number(r['L'+n+'_Koreksi']||0)}));return m};
+const sisa=o=>Number(o.Jumlah||0)-(TT[o.ID]||0);
+const hkRec=(no,oid)=>(D.HasilKerja||[]).find(r=>String(r.SPKNo)===String(no)&&r.OrderID===oid);
+const hkL=(r,n)=>r?Number(r['L'+n+'_Jml']||0)+Number(r['L'+n+'_Koreksi']||0):0;
+
 function render(){
+  TT=HKT();
   nav();const p=PAGES[page];$('#ttl').textContent=p.t;$('#sub').textContent=p.s;
   $('#topact').innerHTML=p.sheet?`<button class="btn" onclick="${page==='orders'?'editPO()':'edit()'}">+ Tambah</button>`:'';
   if(page==='customer')$('#topact').insertAdjacentHTML('afterbegin','<button class="btn g" onclick="syncC()">⟳ Sinkron dari Order</button> ');
-  ({dashboard,laporan,pengguna,pengaturan,spk:spkView}[page]||tableView)();
+  ({dashboard,laporan,pengguna,pengaturan,spk:spkView,hk:hkView}[page]||tableView)();
 }
 
 function bars(items,max){return items.map(([l,v,t])=>`<div class="bar"><div class="r"><span>${esc(l)}</span><b>${t}</b></div><div class="t"><div class="f" style="width:${max?Math.min(100,v/max*100):0}%"></div></div></div>`).join('')||'<div class="empty">Belum ada data</div>'}
@@ -253,7 +263,8 @@ function dashboard(){
   const units=Object.keys(U).sort((a,b)=>cnt[b]-cnt[a]);DUS=units;
   if(!U[DU])DU=units[0]||'m';
   const mTot=U['m']||0;
-  const st=[1,2,3].map(i=>{const s=sum(D['HasilKerja'+i],x=>x.Hasil);return [`Hasil Kerja ${i}`,s,`${num(s)} m (${mTot?Math.round(s/mTot*100):0}%)`]});
+  const mO=O.filter(o=>unitOf(o)==='m'),done=sum(mO,o=>TT[o.ID]||0),sis=sum(mO,o=>Math.max(0,sisa(o)));
+  const st=[['Hasil Kerja (m)',done,`${num(done)} m (${mTot?Math.round(done/mTot*100):0}%)`],['Sisa Order (m)',sis,`${num(sis)} m`]];
   const by={};O.filter(o=>unitOf(o)===DU).forEach(o=>by[o.Customer]=(by[o.Customer]||0)+Number(o.Jumlah||0));
   const top=Object.entries(by).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const rec=O.slice(-6).reverse();
@@ -263,7 +274,7 @@ function dashboard(){
    <div class="card kpi"><div class="l">Nilai PO</div><div class="v">${rp(nilai)}</div></div>
    <div class="card kpi"><div class="l">Order Aktif</div><div class="v">${num(aktif)}</div></div></div>
    <div class="grid">${unitCards||'<div class="card kpi"><div class="l">Total Jumlah</div><div class="v">0</div></div>'}</div>
-   <div class="two"><div class="card"><h3>Progres Produksi</h3>${bars(st,mTot)}<div class="us" style="margin-top:12px">Hasil kerja dalam meter, persentase terhadap total order satuan m.</div></div>
+   <div class="two"><div class="card"><h3>Progres Produksi</h3>${bars(st,mTot)}<div class="us" style="margin-top:12px">Hasil kerja dalam meter (termasuk koreksi), persentase terhadap total order satuan m.</div></div>
    <div class="card"><h3>Top Customer (${esc(uLbl(DU)||'tanpa satuan')})</h3>
     <div class="chips">${units.map((u,i)=>`<span class="chip ${u===DU?'on':''}" onclick="setDU(${i})">${esc(uLbl(u)||'tanpa satuan')}</span>`).join('')}</div>
     ${bars(top.map(([n,v])=>[n,v,fm(v,DU)]),top[0]?.[1])}</div></div>
@@ -304,9 +315,9 @@ let PG=1,ALL=false,PS=10;
 function fill(){
   const p=PAGES[page],all=rowsF(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
   PG=Math.min(Math.max(1,PG),pages);
-  const st=(PG-1)*ps,rows=all.slice(st,st+ps);
-  $('#tb').innerHTML=`<table><tr>${p.f.map(f=>`<th class="${f[2]==='number'?'n':''}">${f[1]}</th>`).join('')}<th></th></tr>
-  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+1}" class="empty">Tidak ada data</td></tr>`}</table>`;
+  const st=(PG-1)*ps,rows=all.slice(st,st+ps),isO=page==='orders';
+  $('#tb').innerHTML=`<table><tr>${p.f.map(f=>`<th class="${f[2]==='number'?'n':''}">${f[1]}</th>`).join('')}${isO?'<th class="n">Sisa</th>':''}<th></th></tr>
+  ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}${isO?`<td class="n"><b>${num(sisa(r))}</b></td>`:''}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+2}" class="empty">Tidak ada data</td></tr>`}</table>`;
   $('#pgb').innerHTML=`<span class="cnt">${all.length?`Menampilkan ${st+1}–${st+rows.length} dari ${all.length} data`:'0 data'}</span>
   <div class="pb"><select onchange="PS=+this.value;PG=1;fill()">${[10,25,50,100].map(x=>`<option ${x===PS?'selected':''}>${x}</option>`).join('')}</select>
   <button ${PG<=1?'disabled':''} onclick="gp(${PG-1})">‹ Sebelumnya</button><span>Hal ${PG}/${pages}</span><button ${PG>=pages?'disabled':''} onclick="gp(${PG+1})">Berikutnya ›</button></div>`;
@@ -399,6 +410,7 @@ function saveMulti(e){
 frm.onsubmit=e=>{
   if(frm.dataset.mode==='test')return;
   if(frm.dataset.mode==='spk')return saveSPKf(e);
+  if(frm.dataset.mode==='hk')return saveHKf(e);
   if(frm.dataset.mode)return frm.dataset.mode==='pw'?savePw():saveU();
   if(frm.dataset.multi)return saveMulti(e);
   const p=PAGES[page],o=Object.fromEntries(new FormData(frm));o.ID=frm.dataset.id;
@@ -410,21 +422,23 @@ function del(id){if(!confirm('Hapus data ini?'))return;const p=PAGES[page];
 
 function laporan(){
   const rows=D.Orders.filter(o=>(!R.from||o.Tgl>=R.from)&&(!R.to||o.Tgl<=R.to)&&(!R.cust||o.Customer===R.cust)).map(o=>{
-    const h=i=>sum(D['HasilKerja'+i].filter(x=>x.OrderID===o.ID),x=>x.Hasil);
-    return {...o,h1:h(1),h2:h(2),h3:h(3),nilai:o.Jumlah*o.Harga}});
+    const hn=n=>sum(D.HasilKerja.filter(x=>x.OrderID===o.ID),x=>Number(x['L'+n+'_Jml']||0)+Number(x['L'+n+'_Koreksi']||0));
+    const h1=hn(1),h2=hn(2),h3=hn(3);
+    return {...o,h1,h2,h3,sisa:o.Jumlah-h1-h2-h3,nilai:o.Jumlah*o.Harga}});
   window._rep=rows;
   $('#view').innerHTML=`<div class="tools">
    <input type="date" value="${R.from}" onchange="R.from=this.value;laporan()"><input type="date" value="${R.to}" onchange="R.to=this.value;laporan()">
    <select onchange="R.cust=this.value;laporan()"><option value="">Semua Customer</option>${D.Customer.map(c=>`<option ${c.Nama===R.cust?'selected':''}>${esc(c.Nama)}</option>`).join('')}</select>
    <span class="grow"></span><button class="btn g" onclick="csv()">Export CSV</button><button class="btn" onclick="print()">Cetak</button></div>
   <div class="grid"><div class="card kpi"><div class="l">Jumlah Order</div><div class="v">${rows.length}</div></div>
-   <div class="card kpi"><div class="l">Total Meter</div><div class="v">${num(sum(rows,r=>r.Jumlah))}</div></div>
+   <div class="card kpi"><div class="l">Total Jumlah</div><div class="v">${num(sum(rows,r=>r.Jumlah))}</div></div>
+   <div class="card kpi"><div class="l">Total Sisa</div><div class="v">${num(sum(rows,r=>r.sisa))}</div></div>
    <div class="card kpi"><div class="l">Total Nilai</div><div class="v">${rp(sum(rows,r=>r.nilai))}</div></div></div>
-  <div class="card tw" style="padding:6px"><table><tr><th>Tgl</th><th>Customer</th><th>Uraian</th><th>PO/SJ</th><th class="n">Jumlah</th><th class="n">HK1</th><th class="n">HK2</th><th class="n">HK3</th><th class="n">Nilai</th><th>Status</th></tr>
-  ${rows.map(r=>`<tr><td>${esc(r.Tgl)}</td><td>${esc(r.Customer)}</td><td>${esc(r.Uraian)}</td><td>${esc(r.PO_SJ)}</td><td class="n">${num(r.Jumlah)}</td><td class="n">${num(r.h1)}</td><td class="n">${num(r.h2)}</td><td class="n">${num(r.h3)}</td><td class="n">${rp(r.nilai)}</td><td><span class="badge ${r.Status}">${r.Status}</span></td></tr>`).join('')||'<tr><td colspan=10 class="empty">Tidak ada data</td></tr>'}</table></div>`;
+  <div class="card tw" style="padding:6px"><table><tr><th>Tgl</th><th>Customer</th><th>Uraian</th><th>PO/SJ</th><th class="n">Jumlah</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Lap 3</th><th class="n">Sisa</th><th class="n">Nilai</th><th>Status</th></tr>
+  ${rows.map(r=>`<tr><td>${esc(r.Tgl)}</td><td>${esc(r.Customer)}</td><td>${esc(r.Uraian)}</td><td>${esc(r.PO_SJ)}</td><td class="n">${num(r.Jumlah)}</td><td class="n">${num(r.h1)}</td><td class="n">${num(r.h2)}</td><td class="n">${num(r.h3)}</td><td class="n">${num(r.sisa)}</td><td class="n">${rp(r.nilai)}</td><td><span class="badge ${r.Status}">${r.Status}</span></td></tr>`).join('')||'<tr><td colspan=11 class="empty">Tidak ada data</td></tr>'}</table></div>`;
 }
 function csv(){
-  const h=['Tgl','Customer','Uraian','PO_SJ','Jumlah','h1','h2','h3','nilai','Status'];
+  const h=['Tgl','Customer','Uraian','PO_SJ','Jumlah','h1','h2','h3','sisa','nilai','Status'];
   const t=[h.join(',')].concat(window._rep.map(r=>h.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
 }
@@ -504,6 +518,51 @@ ${ket}
   const d=f.contentWindow.document;d.open();d.write(h);d.close();
   setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),1500)},300);
 }
+
+/* ---------- Hasil Kerja (dari SPK) ---------- */
+function hkView(){
+  $('#topact').innerHTML='';
+  $('#view').innerHTML=`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ…" value="${esc(q)}" oninput="q=this.value;hkFill()"><a class="rs" onclick="q='';hkView()">Reset</a></div>
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div></div>`;
+  hkFill();
+}
+function hkFill(){
+  const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+  const rows=(D.SPK||[]).map(s=>({s,o:ordOf(s.OrderID),h:hkRec(s.No,s.OrderID)})).filter(x=>x.o)
+    .filter(x=>!tk.length||tk.every(t=>norm([x.s.No,x.o.Customer,x.o.Uraian,x.o.PO_SJ].join(' ')).includes(t)))
+    .sort((a,b)=>String(b.s.No).localeCompare(String(a.s.No),undefined,{numeric:true}));
+  $('#tb').innerHTML=`<table><tr><th>No. SPK</th><th>Customer</th><th>Uraian</th><th>PO/SJ</th><th class="n">Order</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Lap 3</th><th class="n">Sisa</th><th>Status</th><th></th></tr>
+  ${rows.map(({s,o,h})=>`<tr><td><b>${esc(s.No)}</b></td><td>${esc(o.Customer)}</td><td style="white-space:normal;max-width:240px">${esc(o.Uraian)}</td><td>${esc(o.PO_SJ)}</td><td class="n">${num(o.Jumlah)} ${esc(o.Satuan)}</td><td class="n">${num(hkL(h,1))}</td><td class="n">${num(hkL(h,2))}</td><td class="n">${num(hkL(h,3))}</td><td class="n"><b>${num(sisa(o))}</b></td><td><span class="badge ${o.Status}">${o.Status}</span></td><td class="act"><a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">${h?'Edit':'Isi'}</a>${h?`<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`:''}</td></tr>`).join('')||'<tr><td colspan="11" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}</table>`;
+}
+function editHK(no,oid){
+  const o=ordOf(oid),h=hkRec(no,oid)||{};
+  $('#mh').textContent='Hasil Kerja · SPK '+no;
+  const blk=n=>`<div class="full"><label>Laporan ${n}</label><div class="hk">
+    <div><span>Jumlah Hasil Kerja</span><input name="L${n}_Jml" type="number" step="any" value="${esc(h['L'+n+'_Jml'])}"></div>
+    <div><span>Kotak</span><input name="L${n}_Kotak" type="number" step="any" value="${esc(h['L'+n+'_Kotak'])}"></div>
+    <div><span>No. Surat Jalan</span><input name="L${n}_NoSJ" value="${esc(h['L'+n+'_NoSJ'])}"></div>
+    <div><span>Tgl Surat Jalan</span><input name="L${n}_TglSJ" type="date" value="${esc(h['L'+n+'_TglSJ'])}"></div>
+    <div><span>Koreksi Jumlah</span><input name="L${n}_Koreksi" type="number" step="any" value="${esc(h['L'+n+'_Koreksi'])}"></div></div></div>`;
+  $('#mb').innerHTML=`<div class="full"><b>${esc(o.Customer)}</b> · ${esc(o.Uraian)} · ${esc(o.Ukuran)} · PO/SJ ${esc(o.PO_SJ)}<div class="us" id="hksum"></div></div>${blk(1)}${blk(2)}${blk(3)}`;
+  frm.dataset.id='';frm.dataset.no=no;frm.dataset.oid=oid;frm.dataset.multi='';frm.dataset.mode='hk';dlg.classList.add('wide');openD();hkSum();
+}
+function hkSum(){
+  const o=ordOf(frm.dataset.oid);if(!o)return;
+  const cur=hkRec(frm.dataset.no,o.ID);let t=0;
+  [1,2,3].forEach(n=>t+=Number(frm.elements['L'+n+'_Jml'].value||0)+Number(frm.elements['L'+n+'_Koreksi'].value||0));
+  const others=(TT[o.ID]||0)-[1,2,3].reduce((a,n)=>a+hkL(cur,n),0),s=Number(o.Jumlah||0)-others-t;
+  $('#hksum').textContent=`Order ${num(o.Jumlah)} ${o.Satuan||''} · Hasil kerja SPK ini ${num(t)}${others?' · SPK lain '+num(others):''} · Sisa ${num(s)}${s<=0?' → status Selesai':''}`;
+}
+frm.addEventListener('input',()=>{if(frm.dataset.mode==='hk')hkSum()});
+function saveHKf(e){
+  const d={};
+  [1,2,3].forEach(n=>['Jml','Kotak','NoSJ','TglSJ','Koreksi'].forEach(f=>{
+    let v=frm.elements['L'+n+'_'+f].value.trim();
+    if(['Jml','Kotak','Koreksi'].includes(f))v=v===''?'':Number(v);
+    d['L'+n+'_'+f]=v}));
+  api('saveHK',[frm.dataset.no,frm.dataset.oid,d],st=>{toast('Tersimpan ✓ Status order: '+st);load()});
+}
+function delHK(id){if(confirm('Hapus hasil kerja ini? Status order akan dihitung ulang.'))api('deleteHK',[id],()=>{toast('Terhapus');load()})}
 
 /* ---------- Pengaturan ---------- */
 const FSG={std:[18,8,34,30],compact:[23,10,24,26],side:[42,0,28,46],sheet:[10,22,50,24],full:[3,3,64,40]};
