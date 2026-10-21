@@ -91,6 +91,21 @@ dialog.wide{width:min(920px,96vw)}
 <div class="toast" id="toast"></div>
 
 <script>
+/* ====== MODE GITHUB PAGES ======
+   Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
+   Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
+const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
+if(typeof google==='undefined'){
+  const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
+    if(k==='withSuccessHandler')return f=>mk(f,fail);
+    if(k==='withFailureHandler')return f=>mk(ok,f);
+    return(...args)=>{
+      fetch(API_URL,{method:'POST',body:JSON.stringify({fn:k,args})})
+        .then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error);ok&&ok(j.data)})
+        .catch(e=>{const m=/Failed to fetch|JSON/.test(e.message)?new Error('Tidak bisa terhubung ke server. Cek API_URL & deployment.'):e;fail?fail(m):console.error(m)});
+    }}});
+  window.google={script:{get run(){return mk()}}};
+}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const num=n=>Number(n||0).toLocaleString('id-ID');
