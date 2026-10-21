@@ -76,8 +76,6 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .chip{padding:5px 14px;border-radius:99px;border:1px solid var(--bd);cursor:pointer;font-size:12px;font-weight:600;color:var(--mut)}
 .chip:hover{border-color:var(--ac);color:var(--ac)}.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
 dialog.wide{width:min(920px,96vw)}
-dialog.wide form{min-height:470px;display:flex;flex-direction:column}
-dialog.wide .mb{flex:1;align-content:start}
 .it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
 .it a{color:var(--bad);cursor:pointer;text-align:center;font-weight:700}
 .ith{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;font-size:11px;font-weight:600;color:var(--mut);margin-bottom:6px}
@@ -257,8 +255,10 @@ function edit(id){
     else if(t==='date')i=dpBox(k,r[k]);
     else i=`<input name="${k}" type="${t==='date'?'date':t==='number'?'number" step="any':'text'}" value="${v}">`;
     return `<div class="${w||''}"><label>${l}</label>${i}</div>`}).join('');
-  frm.dataset.id=id||'';frm.dataset.multi='';frm.dataset.mode='';dlg.classList.remove('wide');dlg.showModal();
+  frm.dataset.id=id||'';frm.dataset.multi='';frm.dataset.mode='';dlg.classList.remove('wide');openD();
 }
+/* showModal() otomatis fokus ke input pertama (tanggal) -> kalender ikut terbuka. Lepas fokusnya. */
+function openD(){dlg.showModal();const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur()}
 const CAL='<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
 const CHV='<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
 const MON=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -305,7 +305,7 @@ function editPO(){
    <div class="full"><label>Item Order<span id="cnt"></span></label>
     <div class="ith"><span>Uraian</span><span>Ukuran</span><span>Jumlah</span><span>Satuan</span><span>Harga PO</span><span></span></div>
     <div id="items"></div><button type="button" class="btn g" onclick="addItem()">+ Tambah item</button></div>`;
-  frm.dataset.id='';frm.dataset.multi='1';frm.dataset.mode='';dlg.classList.add('wide');addItem();dlg.showModal();
+  frm.dataset.id='';frm.dataset.multi='1';frm.dataset.mode='';dlg.classList.add('wide');addItem();openD();
 }
 function addItem(){
   const box=$('#items');if(box.children.length>=10){toast('Maksimal 10 item per PO');return}
@@ -360,7 +360,7 @@ function pengguna(){
   api('listUsers',[],us=>{$('#view').innerHTML=`<div class="card tw" style="padding:6px"><table><tr><th>Username</th><th>Nama</th><th></th></tr>
   ${us.map(u=>`<tr><td>${esc(u.Username)}</td><td>${esc(u.Nama)}</td><td class="act">${String(u.Username).toLowerCase()===String(ME.user).toLowerCase()?'<span class="badge Selesai">Anda</span>':`<a class="d" onclick="delU('${esc(u.Username)}')">Hapus</a>`}</td></tr>`).join('')}</table></div>`});
 }
-function modal(t,h,m){$('#mh').textContent=t;$('#mb').innerHTML=h;frm.dataset.mode=m;frm.dataset.multi='';dlg.classList.remove('wide');dlg.showModal()}
+function modal(t,h,m){$('#mh').textContent=t;$('#mb').innerHTML=h;frm.dataset.mode=m;frm.dataset.multi='';dlg.classList.remove('wide');openD()}
 function addU(){modal('Tambah Pengguna',`<div><label>Username</label><input name="u" required></div><div><label>Nama</label><input name="n"></div><div class="full"><label>Password (min. 6 karakter)</label><input name="p" type="password" minlength="6" required></div>`,'u')}
 function saveU(){api('addUser',[frm.elements.u.value,frm.elements.n.value,frm.elements.p.value],()=>{toast('Pengguna ditambahkan ✓');pengguna()})}
 function pw(){modal('Ganti Password',`<div class="full"><label>Password lama</label><input name="o" type="password" required></div><div class="full"><label>Password baru (min. 6 karakter)</label><input name="n" type="password" minlength="6" required></div>`,'pw')}
