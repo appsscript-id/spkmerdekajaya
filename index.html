@@ -113,81 +113,6 @@ dialog.wide{width:min(920px,96vw)}
 @media print{aside,.tools,.fb,.pg,.burger,.act{display:none!important}main{padding:0}}
 
 /* ===== Hasil Kerja ===== */
-.hk-card{
-  background:#fff;
-  border:1px solid var(--bd);
-  border-radius:14px;
-  padding:14px;
-  margin-bottom:12px;
-}
-
-.hk-head{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:10px;
-}
-
-.hk-info{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  margin-bottom:10px;
-}
-
-.hk-info span{
-  display:block;
-  font-size:11px;
-  color:var(--mut);
-}
-
-.hk-uraian{
-  margin-bottom:12px;
-  line-height:1.5;
-}
-
-.hk-total{
-  display:grid;
-  grid-template-columns:
-  repeat(6,1fr);
-  gap:10px;
-  text-align:center;
-  padding-top:10px;
-  border-top:1px solid var(--bd);
-}
-
-.hk-total span{
-  display:block;
-  font-size:11px;
-  color:var(--mut);
-}
-
-.hk-act{
-  margin-top:12px;
-  text-align:right;
-}
-
-.hk-act a{
-  margin-left:12px;
-  cursor:pointer;
-}
-
-.hk-act .d{
-  color:#dc2626;
-}
-
-@media(max-width:820px){
-
-  .hk-info{
-    grid-template-columns:1fr;
-  }
-
-  .hk-total{
-    grid-template-columns:
-    repeat(3,1fr);
-  }
-
-}  
 .hk{display:grid;grid-template-columns:1.1fr 1fr 1fr .9fr 1.4fr;gap:8px;}
 .hk span{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
 @media(max-width:820px){.hk{grid-template-columns:1fr 1fr}}
@@ -612,168 +537,35 @@ function hkView(){
   hkFill();
 }
 function hkFill(){
-
-  const tk=q.toLowerCase()
-    .split(/\s+/)
-    .map(norm)
-    .filter(Boolean);
-
+  const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
   const rows=(D.SPK||[])
-    .map(s=>({
-      s,
-      o:ordOf(s.OrderID),
-      h:hkRec(s.No,s.OrderID)
-    }))
+    .map(s=>({s,o:ordOf(s.OrderID),h:hkRec(s.No,s.OrderID)}))
     .filter(x=>x.o)
-    .filter(x=>
-      !tk.length ||
-      tk.every(t=>
-        norm([
-          x.s.No,
-          x.o.Customer,
-          x.o.Uraian,
-          x.o.PO_SJ
-        ].join(' '))
-        .includes(t)
-      )
-    )
-    .sort((a,b)=>
-      String(b.s.No)
-      .localeCompare(
-        String(a.s.No),
-        undefined,
-        {numeric:true}
-      )
-    );
+    .filter(x=>!tk.length||tk.every(t=>norm([x.s.No,x.o.Customer,x.o.Uraian,x.o.PO_SJ].join(' ')).includes(t)))
+    .sort((a,b)=>String(b.s.No).localeCompare(String(a.s.No),undefined,{numeric:true}));
 
-  $('#tb').innerHTML=
-
-  rows.map(({s,o,h})=>{
-
-    const lap1=
-      Number(h?.L1_Jml||0);
-
-    const lap2=
-      Number(h?.L2_Jml||0);
-
-    const lap3=
-      Number(h?.L3_Jml||0);
-
-    const kor=
-      Number(h?.L1_Koreksi||0)+
-      Number(h?.L2_Koreksi||0)+
-      Number(h?.L3_Koreksi||0);
-
-    const sisaOrder=
-      Number(o.Jumlah||0)
-      -lap1
-      -lap2
-      -lap3
-      -kor;
-
-    return `
-
-    <div class="hk-card">
-
-      <div class="hk-head">
-
-        <div>
-          <b>${esc(s.No)}</b>
-        </div>
-
-        <span class="badge ${o.Status}">
-          ${o.Status}
-        </span>
-
-      </div>
-
-      <div class="hk-info">
-
-        <div>
-          <span>Customer</span>
-          <b>${esc(o.Customer)}</b>
-        </div>
-
-        <div>
-          <span>PO/SJ</span>
-          <b>${esc(o.PO_SJ)}</b>
-        </div>
-
-      </div>
-
-      <div class="hk-uraian">
-        ${esc(o.Uraian)}
-      </div>
-
-      <div class="hk-total">
-
-        <div>
-          <span>Order</span>
-          <b>${num(o.Jumlah)}</b>
-        </div>
-
-        <div>
-          <span>L1</span>
-          <b>${num(lap1)}</b>
-        </div>
-
-        <div>
-          <span>L2</span>
-          <b>${num(lap2)}</b>
-        </div>
-
-        <div>
-          <span>L3</span>
-          <b>${num(lap3)}</b>
-        </div>
-
-        <div>
-          <span>Kor</span>
-          <b style="color:#b45309">
-            ${num(kor)}
-          </b>
-        </div>
-
-        <div>
-          <span>Sisa</span>
-          <b>
-            ${num(sisaOrder)}
-          </b>
-        </div>
-
-      </div>
-
-      <div class="hk-act">
-
-        <a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">
-
-          ${h?'Edit':'Isi'}
-
-        </a>
-
-        ${
-          h
-          ?
-          `<a class="d" onclick="delHK('${h.ID}')">
-            Hapus
-          </a>`
-          :
-          ''
-        }
-
-      </div>
-
-    </div>
-
-    `;
-
-  }).join('')
-
-  ||
-
-  `<div class="empty">
-      Belum ada SPK.
-    </div>`;
+  const c='style="text-align:center"';
+  $('#tb').innerHTML=`<table style="table-layout:fixed;min-width:1050px">
+  <colgroup><col style="width:105px"><col style="width:130px"><col><col style="width:110px"><col style="width:75px">
+  <col style="width:55px"><col style="width:55px"><col style="width:55px"><col style="width:60px"><col style="width:65px"><col style="width:90px"><col style="width:120px"></colgroup>
+  <tr><th>No. SPK</th><th>Customer</th><th>Uraian Barang</th><th>PO/SJ</th><th ${c}>Order</th>
+  <th ${c}>L1</th><th ${c}>L2</th><th ${c}>L3</th><th ${c}>Kor</th><th ${c}>Sisa</th><th>Status</th><th></th></tr>
+  ${rows.map(({s,o,h})=>{
+    const kor=[1,2,3].reduce((a,n)=>a+Number(h?.['L'+n+'_Koreksi']||0),0);
+    const sis=sisa(o); // total semua SPK, konsisten dengan Order & Dashboard
+    return `<tr>
+    <td><b>${esc(s.No)}</b></td>
+    <td style="white-space:normal">${esc(o.Customer)}</td>
+    <td style="white-space:normal;line-height:1.4;word-break:break-word">${esc(o.Uraian)}</td>
+    <td>${esc(o.PO_SJ)}</td>
+    <td ${c}>${num(o.Jumlah)}</td>
+    <td ${c}>${num(h?.L1_Jml)}</td><td ${c}>${num(h?.L2_Jml)}</td><td ${c}>${num(h?.L3_Jml)}</td>
+    <td ${c.slice(0,-1)};font-weight:700;color:var(--warn)">${num(kor)}</td>
+    <td ${c.slice(0,-1)};font-weight:700">${num(sis)}</td>
+    <td><span class="badge ${o.Status}">${esc(o.Status)}</span></td>
+    <td class="act"><a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">${h?'Edit':'Isi'}</a>${h?`<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`:''}</td>
+    </tr>`}).join('')||'<tr><td colspan="12" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}
+  </table>`;
 }
 
 function editHK(no,oid){
