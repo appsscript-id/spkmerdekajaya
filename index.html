@@ -54,6 +54,19 @@ dialog::backdrop{background:rgba(15,16,32,.55)}
 .fb{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;margin-bottom:14px}
 .fb input{flex:1;min-width:200px}.fb select{width:auto;min-width:140px}
 .rs{color:var(--ac);font-weight:600;cursor:pointer;padding:0 8px}.cnt{padding:10px 12px;color:var(--mut);font-size:12px}
+.cb{position:relative}.cb>input:not([type=hidden]){padding-right:36px}
+.cb .ic{position:absolute;right:12px;top:11px;color:var(--mut);pointer-events:none}
+.cl{position:absolute;left:0;top:calc(100% + 6px);min-width:100%;background:var(--card);border:1px solid var(--bd);border-radius:12px;box-shadow:0 14px 36px rgba(15,16,32,.22);max-height:230px;overflow:auto;z-index:30;display:none;padding:6px}
+.ci{padding:9px 12px;border-radius:8px;cursor:pointer;font-size:14px}.ci:hover,.ci.on{background:rgba(79,70,229,.12);color:var(--ac)}
+.ci.nw{color:var(--mut);cursor:default;font-size:13px}.ci.nw:hover{background:none;color:var(--mut)}
+.dp .dpi{cursor:pointer}.dpc{width:296px;padding:14px}
+.dh{display:flex;justify-content:space-between;align-items:center;font-weight:600;margin-bottom:10px}
+.dh a{cursor:pointer;padding:2px 12px;border-radius:8px;font-size:20px;line-height:1.3}.dh a:hover{background:rgba(79,70,229,.12)}
+.dg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.dg u{text-decoration:none;font-size:11px;color:var(--mut);padding:6px 0;font-weight:600}
+.dg b{font-weight:500;padding:8px 0;border-radius:8px;cursor:pointer;font-size:13px}.dg b:hover{background:rgba(79,70,229,.12)}
+.dg b.td{color:var(--ac);font-weight:700}.dg b.sel{background:var(--ac);color:#fff}
+.df{text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}.df a{color:var(--ac);font-weight:600;cursor:pointer}
 dialog.wide{width:min(920px,96vw)}
 .it{display:grid;grid-template-columns:2.6fr 1fr 1fr .7fr 1.3fr 24px;gap:8px;margin-bottom:8px;align-items:center}
 .it a{color:var(--bad);cursor:pointer;text-align:center;font-weight:700}
@@ -114,7 +127,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const num=n=>Number(n||0).toLocaleString('id-ID');
 const rp=n=>'Rp '+num(Math.round(n));
 const sum=(a,f)=>a.reduce((t,x)=>t+Number(f(x)||0),0);
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const STATUS=['Baru','Proses','Selesai'];
 const HK=[['Tgl','Tanggal','date'],['OrderID','Order','order'],['Operator','Operator'],['Hasil','Hasil (m)','number'],['Reject','Reject (m)','number'],['Catatan','Catatan']];
 const PAGES={
@@ -199,21 +212,59 @@ function csvT(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download=p.t+'.csv';a.click();
 }
 function edit(id){
-  const p=PAGES[page],r=id?D[p.sheet].find(x=>x.ID===id):{Tgl:today(),Status:'Baru',Satuan:'m'};
+  const p=PAGES[page],r=id?D[p.sheet].find(x=>x.ID===id):{Tgl:today(),Status:'Baru'};
   $('#mh').textContent=(id?'Edit ':'Tambah ')+p.t;
   $('#mb').innerHTML=p.f.map(([k,l,t,w])=>{
     let i;const v=esc(r[k]);
-    if(t==='customer')i=`<input name="${k}" list="cl" value="${v}" placeholder="Ketik / pilih customer" autocomplete="off" required><datalist id="cl">${D.Customer.map(c=>`<option value="${esc(c.Nama)}">`).join('')}</datalist>`;
+    if(t==='customer')i=cbox(k,r[k]);
     else if(t==='order')i=`<select name="${k}" required><option value="">— pilih order —</option>${D.Orders.map(o=>`<option value="${o.ID}" ${o.ID===r[k]?'selected':''}>${esc(o.Customer+' · '+o.Uraian)}</option>`).join('')}</select>`;
     else if(t==='status')i=`<select name="${k}">${STATUS.map(s=>`<option ${s===r[k]?'selected':''}>${s}</option>`).join('')}</select>`;
+    else if(t==='date')i=dpBox(k,r[k]);
     else i=`<input name="${k}" type="${t==='date'?'date':t==='number'?'number" step="any':'text'}" value="${v}">`;
     return `<div class="${w||''}"><label>${l}</label>${i}</div>`}).join('');
   frm.dataset.id=id||'';frm.dataset.multi='';frm.dataset.mode='';dlg.classList.remove('wide');dlg.showModal();
 }
+const CAL='<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+const CHV='<svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>';
+const MON=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const dFmt=v=>{if(!/^\d{4}-\d\d-\d\d$/.test(v||''))return '';const[y,m,d]=v.split('-');return +d+' '+MON[m-1]+' '+y};
+/* --- Customer combobox --- */
+function cbox(k,v){return `<div class="cb"><input name="${k}" value="${esc(v)}" autocomplete="off" required oninput="cbF(this)" onfocus="cbF(this)" onblur="cbH(this)" onkeydown="cbK(this,event)">${CHV}<div class="cl"></div></div>`}
+function cbF(i){
+  const l=i.parentNode.querySelector('.cl'),v=i.value.trim().toLowerCase();
+  const m=D.Customer.map(c=>String(c.Nama)).filter(n=>!v||n.toLowerCase().includes(v));
+  const exact=D.Customer.some(c=>String(c.Nama).toLowerCase()===v);
+  l.innerHTML=m.map(n=>`<div class="ci" onmousedown="cbP(this,event)">${esc(n)}</div>`).join('')
+    +(v&&!exact?`<div class="ci nw" onmousedown="event.preventDefault()">＋ Customer baru: <b>${esc(i.value.trim())}</b></div>`:'')
+    ||'<div class="ci nw">Belum ada customer</div>';
+  l.style.display='block';
+}
+function cbP(el,e){e.preventDefault();const b=el.closest('.cb');b.querySelector('input').value=el.textContent;b.querySelector('.cl').style.display='none'}
+function cbH(i){setTimeout(()=>{const l=i.parentNode.querySelector('.cl');if(l)l.style.display='none'},120)}
+function cbK(i,e){
+  const l=i.parentNode.querySelector('.cl'),it=[...l.querySelectorAll('.ci:not(.nw)')];let a=it.findIndex(x=>x.classList.contains('on'));
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(l.style.display!=='block')cbF(i);
+    it.forEach(x=>x.classList.remove('on'));a=e.key==='ArrowDown'?Math.min(it.length-1,a+1):Math.max(0,a-1);
+    if(it[a]){it[a].classList.add('on');it[a].scrollIntoView({block:'nearest'})}}
+  else if(e.key==='Enter'&&a>=0&&l.style.display==='block'){e.preventDefault();i.value=it[a].textContent;l.style.display='none'}
+}
+/* --- Date picker --- */
+function dpBox(k,v){v=v||today();return `<div class="cb dp"><input type="hidden" name="${k}" value="${v}"><input class="dpi" readonly value="${dFmt(v)}" onfocus="dpOpen(this)" onclick="dpOpen(this)" onblur="cbH(this)">${CAL}<div class="cl dpc"></div></div>`}
+function dpOpen(i){const b=i.parentNode,[y,m]=b.querySelector('[type=hidden]').value.split('-');b._y=+y;b._m=+m-1;dpR(b);b.querySelector('.cl').style.display='block'}
+function dpR(b){
+  const h=b.querySelector('[type=hidden]').value,y=b._y,m=b._m,first=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate(),t=today();
+  let c='';for(let i=0;i<first;i++)c+='<i></i>';
+  for(let d=1;d<=n;d++){const v=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');c+=`<b class="${v===h?'sel':v===t?'td':''}" onmousedown="dpP(this,'${v}',event)">${d}</b>`}
+  b.querySelector('.cl').innerHTML=`<div class="dh"><a onmousedown="dpN(this,-1,event)">‹</a><span>${MON[m]} ${y}</span><a onmousedown="dpN(this,1,event)">›</a></div>
+   <div class="dg">${['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(x=>`<u>${x}</u>`).join('')}${c}</div><div class="df"><a onmousedown="dpP(this,'${t}',event)">Hari ini</a></div>`;
+}
+function dpN(el,d,e){e.preventDefault();const b=el.closest('.dp');b._m+=d;if(b._m<0){b._m=11;b._y--}if(b._m>11){b._m=0;b._y++}dpR(b)}
+function dpP(el,v,e){e.preventDefault();const b=el.closest('.dp');b.querySelector('[type=hidden]').value=v;b.querySelector('.dpi').value=dFmt(v);b.querySelector('.cl').style.display='none'}
+
 function editPO(){
   $('#mh').textContent='Tambah Order (1 PO, maks. 10 item)';
-  $('#mb').innerHTML=`<div><label>Tanggal</label><input name="Tgl" type="date" value="${today()}"></div>
-   <div><label>Customer</label><input name="Customer" list="cl" placeholder="Ketik / pilih customer" autocomplete="off" required><datalist id="cl">${D.Customer.map(c=>`<option value="${esc(c.Nama)}">`).join('')}</datalist></div>
+  $('#mb').innerHTML=`<div><label>Tanggal</label>${dpBox('Tgl')}</div>
+   <div><label>Customer</label>${cbox('Customer','')}</div>
    <div><label>PO/SJ</label><input name="PO_SJ" required></div>
    <div><label>Status</label><select name="Status">${STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
    <div class="full"><label>Item Order<span id="cnt"></span></label>
@@ -224,7 +275,7 @@ function editPO(){
 function addItem(){
   const box=$('#items');if(box.children.length>=10){toast('Maksimal 10 item per PO');return}
   const d=document.createElement('div');d.className='it';
-  d.innerHTML=`<input name="Uraian" class="u" placeholder="Uraian"><input name="Ukuran" placeholder='60"'><input name="Jumlah" type="number" step="any" placeholder="0"><input name="Satuan" value="m"><input name="Harga" type="number" step="any" placeholder="0"><a title="Hapus item" onclick="if($('#items').children.length>1){this.parentNode.remove();cnt()}">✕</a>`;
+  d.innerHTML=`<input name="Uraian" class="u"><input name="Ukuran"><input name="Jumlah" type="number" step="any"><input name="Satuan"><input name="Harga" type="number" step="any"><a title="Hapus item" onclick="if($('#items').children.length>1){this.parentNode.remove();cnt()}">✕</a>`;
   box.appendChild(d);cnt();
 }
 function cnt(){$('#cnt').textContent=$('#items').children.length+'/10'}
