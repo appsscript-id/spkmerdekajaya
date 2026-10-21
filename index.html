@@ -138,6 +138,7 @@ const ordLabel=id=>{const o=D.Orders.find(x=>x.ID===id);return o?`${o.Customer} 
 function render(){
   nav();const p=PAGES[page];$('#ttl').textContent=p.t;$('#sub').textContent=p.s;
   $('#topact').innerHTML=p.sheet?`<button class="btn" onclick="${page==='orders'?'editPO()':'edit()'}">+ Tambah</button>`:'';
+  if(page==='customer')$('#topact').insertAdjacentHTML('afterbegin','<button class="btn g" onclick="syncC()">⟳ Sinkron dari Order</button> ');
   ({dashboard,laporan,pengguna}[page]||tableView)();
 }
 
@@ -175,7 +176,7 @@ function edit(id){
   $('#mh').textContent=(id?'Edit ':'Tambah ')+p.t;
   $('#mb').innerHTML=p.f.map(([k,l,t,w])=>{
     let i;const v=esc(r[k]);
-    if(t==='customer')i=`<select name="${k}"><option value="">— pilih —</option>${D.Customer.map(c=>`<option ${c.Nama===r[k]?'selected':''}>${esc(c.Nama)}</option>`).join('')}</select>`;
+    if(t==='customer')i=`<input name="${k}" list="cl" value="${v}" placeholder="Ketik / pilih customer" autocomplete="off" required><datalist id="cl">${D.Customer.map(c=>`<option value="${esc(c.Nama)}">`).join('')}</datalist>`;
     else if(t==='order')i=`<select name="${k}" required><option value="">— pilih order —</option>${D.Orders.map(o=>`<option value="${o.ID}" ${o.ID===r[k]?'selected':''}>${esc(o.Customer+' · '+o.Uraian)}</option>`).join('')}</select>`;
     else if(t==='status')i=`<select name="${k}">${STATUS.map(s=>`<option ${s===r[k]?'selected':''}>${s}</option>`).join('')}</select>`;
     else i=`<input name="${k}" type="${t==='date'?'date':t==='number'?'number" step="any':'text'}" value="${v}">`;
@@ -185,7 +186,7 @@ function edit(id){
 function editPO(){
   $('#mh').textContent='Tambah Order (1 PO, maks. 10 item)';
   $('#mb').innerHTML=`<div><label>Tanggal</label><input name="Tgl" type="date" value="${today()}"></div>
-   <div><label>Customer</label><select name="Customer" required><option value="">— pilih —</option>${D.Customer.map(c=>`<option>${esc(c.Nama)}</option>`).join('')}</select></div>
+   <div><label>Customer</label><input name="Customer" list="cl" placeholder="Ketik / pilih customer" autocomplete="off" required><datalist id="cl">${D.Customer.map(c=>`<option value="${esc(c.Nama)}">`).join('')}</datalist></div>
    <div><label>PO/SJ</label><input name="PO_SJ" required></div>
    <div><label>Status</label><select name="Status">${STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
    <div class="full"><label>Item Order<span id="cnt"></span></label>
@@ -237,6 +238,8 @@ function csv(){
   const t=[h.join(',')].concat(window._rep.map(r=>h.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
 }
+function syncC(){api('syncCustomers',[],n=>{toast(n+' customer baru diimpor');load()})}
+
 /* ---------- Pengguna ---------- */
 function pengguna(){
   $('#topact').innerHTML=`<button class="btn g" onclick="pw()">Ganti Password</button> <button class="btn" onclick="addU()">+ Pengguna</button>`;
