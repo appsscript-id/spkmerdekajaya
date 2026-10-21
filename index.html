@@ -540,9 +540,9 @@ function hkFill(){
       h:hkRec(s.No,s.OrderID)
     }))
     .filter(x=>x.o)
-    .filter(x=>
+    .filter(x =>
       !tk.length ||
-      tk.every(t=>
+      tk.every(t =>
         norm([
           x.s.No,
           x.o.Customer,
@@ -559,117 +559,195 @@ function hkFill(){
       )
     );
 
-  $('#tb').innerHTML=
-  `<table>
+  $('#tb').innerHTML=`
+
+  <table style="width:100%;table-layout:fixed">
+
+    <colgroup>
+
+      <col style="width:120px">
+      <col style="width:120px">
+
+      <col style="width:auto">
+
+      <col style="width:110px">
+
+      <col style="width:80px">
+
+      <col style="width:50px">
+      <col style="width:50px">
+      <col style="width:50px">
+
+      <col style="width:60px">
+
+      <col style="width:60px">
+
+      <col style="width:90px">
+
+      <col style="width:90px">
+
+    </colgroup>
 
     <tr>
+
       <th>No. SPK</th>
+
       <th>Customer</th>
-      <th>Uraian</th>
+
+      <th>Uraian Barang</th>
+
       <th>PO/SJ</th>
 
-      <th class="n">Order</th>
+      <th style="text-align:center">Order</th>
 
-      <th class="n">Lap 1</th>
-      <th class="n">Lap 2</th>
-      <th class="n">Lap 3</th>
+      <th style="text-align:center">L1</th>
 
-      <th class="n">Koreksi</th>
+      <th style="text-align:center">L2</th>
 
-      <th class="n">Sisa</th>
+      <th style="text-align:center">L3</th>
+
+      <th style="text-align:center">Kor</th>
+
+      <th style="text-align:center">Sisa</th>
 
       <th>Status</th>
-      <th></th>
+
+      <th>Aksi</th>
+
     </tr>
 
-    ${rows.map(({s,o,h})=>{
+${rows.map(({s,o,h})=>{
 
-      const lap1 = Number(h?.L1_Jml || 0);
-      const lap2 = Number(h?.L2_Jml || 0);
-      const lap3 = Number(h?.L3_Jml || 0);
+  const lap1=Number(h?.L1_Jml||0);
+  const lap2=Number(h?.L2_Jml||0);
+  const lap3=Number(h?.L3_Jml||0);
 
-      const kor1 = Number(h?.L1_Koreksi || 0);
-      const kor2 = Number(h?.L2_Koreksi || 0);
-      const kor3 = Number(h?.L3_Koreksi || 0);
+  const kor1=Number(h?.L1_Koreksi||0);
+  const kor2=Number(h?.L2_Koreksi||0);
+  const kor3=Number(h?.L3_Koreksi||0);
 
-      const totalKoreksi =
-        kor1 +
-        kor2 +
-        kor3;
+  const totalKoreksi=
+    kor1+
+    kor2+
+    kor3;
 
-      const sisaOrder =
-        Number(o.Jumlah || 0)
-        - lap1
-        - lap2
-        - lap3
-        - totalKoreksi;
+  const sisaOrder=
+    Number(o.Jumlah||0)
+    -lap1
+    -lap2
+    -lap3
+    -totalKoreksi;
 
-      return `
-      <tr>
+  return `
 
-        <td><b>${esc(s.No)}</b></td>
+<tr>
 
-        <td>${esc(o.Customer)}</td>
+<td>
+  <b>${esc(s.No)}</b>
+</td>
 
-        <td style="white-space:normal;max-width:240px">
-          ${esc(o.Uraian)}
-        </td>
+<td>
+  ${esc(o.Customer)}
+</td>
 
-        <td>${esc(o.PO_SJ)}</td>
+<td
+ style="
+ white-space:normal;
+ line-height:1.4;
+ word-break:break-word;
+ padding-right:10px;
+ ">
+  ${esc(o.Uraian)}
+</td>
 
-        <td class="n">
-          ${num(o.Jumlah)}
-          ${esc(o.Satuan)}
-        </td>
+<td>
+  ${esc(o.PO_SJ)}
+</td>
 
-        <td class="n">${num(lap1)}</td>
+<td style="text-align:center">
+  ${num(o.Jumlah)}
+</td>
 
-        <td class="n">${num(lap2)}</td>
+<td style="text-align:center">
+  ${num(lap1)}
+</td>
 
-        <td class="n">${num(lap3)}</td>
+<td style="text-align:center">
+  ${num(lap2)}
+</td>
 
-        <td class="n">
-          <b>${num(totalKoreksi)}</b>
-        </td>
+<td style="text-align:center">
+  ${num(lap3)}
+</td>
 
-        <td class="n">
-          <b>${num(sisaOrder)}</b>
-        </td>
+<td
+ style="
+ text-align:center;
+ font-weight:700;
+ color:#b45309;
+ ">
+  ${num(totalKoreksi)}
+</td>
 
-        <td>
-          <span class="badge ${o.Status}">
-            ${o.Status}
-          </span>
-        </td>
+<td
+ style="
+ text-align:center;
+ font-weight:700;
+ ">
+  ${num(sisaOrder)}
+</td>
 
-        <td class="act">
-          <a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">
-            ${h?'Edit':'Isi'}
-          </a>
+<td>
+  <span class="badge ${o.Status}">
+    ${o.Status}
+  </span>
+</td>
 
-          ${
-            h
-            ? `<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`
-            : ''
-          }
+<td class="act">
 
-        </td>
+<a
+ onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">
+ ${h?'Edit':'Isi'}
+</a>
 
-      </tr>
-      `;
-
-    }).join('') ||
-
-    `<tr>
-      <td colspan="12" class="empty">
-        Belum ada SPK. Buat SPK terlebih dahulu.
-      </td>
-    </tr>`
-
-    }
-
-   </table>`;
+${
+h
+?
+`<a
+ class="d"
+ onclick="delHK('${h.ID}')">
+ Hapus
+</a>`
+:
+''
 }
+
+</td>
+
+</tr>
+
+`;
+
+}).join('') ||
+
+`
+
+<tr>
+<td colspan="12" class="empty">
+Belum ada SPK.
+Buat SPK terlebih dahulu.
+</td>
+</tr>
+
+`
+
+}
+
+</table>
+
+`;
+}
+
 function editHK(no,oid){
   const o=ordOf(oid),h=hkRec(no,oid)||{};
   $('#mh').textContent='Hasil Kerja · SPK '+no;
