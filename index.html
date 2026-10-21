@@ -190,15 +190,25 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.2.0';
+const VER='1.2.1';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
     if(k==='withFailureHandler')return f=>mk(ok,f);
     return(...args)=>{
       fetch(API_URL,{method:'POST',body:JSON.stringify({fn:k,args})})
-        .then(r=>r.json()).then(j=>{if(j.error)throw new Error(j.error);ok&&ok(j.data)})
-        .catch(e=>{const m=/Failed to fetch|JSON/.test(e.message)?new Error('Tidak bisa terhubung ke server. Cek API_URL & deployment.'):e;fail?fail(m):console.error(m)});
+        .then(r=>r.json())
+        .then(j=>{
+          if(j.error)throw new Error(j.error);
+          return j;
+        })
+        .then(
+          j=>{ok&&ok(j.data)},
+          e=>{
+            const m=/Failed to fetch|JSON|NetworkError/.test(e.message)
+              ?new Error('Tidak bisa terhubung ke server. Cek API_URL & deployment.'):e;
+            fail?fail(m):console.error(m);
+          });
     }}});
   window.google={script:{get run(){return mk()}}};
 }
@@ -422,7 +432,7 @@ function del(id){if(!confirm('Hapus data ini?'))return;const p=PAGES[page];
 
 function laporan(){
   const rows=D.Orders.filter(o=>(!R.from||o.Tgl>=R.from)&&(!R.to||o.Tgl<=R.to)&&(!R.cust||o.Customer===R.cust)).map(o=>{
-    const hn=n=>sum(D.HasilKerja.filter(x=>x.OrderID===o.ID),x=>Number(x['L'+n+'_Jml']||0)+Number(x['L'+n+'_Koreksi']||0));
+    const hn=n=>sum((D.HasilKerja||[]).filter(x=>x.OrderID===o.ID),x=>Number(x['L'+n+'_Jml']||0)+Number(x['L'+n+'_Koreksi']||0));
     const h1=hn(1),h2=hn(2),h3=hn(3);
     return {...o,h1,h2,h3,sisa:o.Jumlah-h1-h2-h3,nilai:o.Jumlah*o.Harga}});
   window._rep=rows;
@@ -440,7 +450,7 @@ function laporan(){
 function csv(){
   const h=['Tgl','Customer','Uraian','PO_SJ','Jumlah','h1','h2','h3','sisa','nilai','Status'];
   const t=[h.join(',')].concat(window._rep.map(r=>h.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
 }
 function syncC(){api('syncCustomers',[],n=>{toast(n+' customer baru diimpor');load()})}
 
@@ -527,225 +537,35 @@ function hkView(){
   hkFill();
 }
 function hkFill(){
-
-    const tk=q.toLowerCase()
-    .split(/\s+/)
-    .map(norm)
-    .filter(Boolean);
-
+  const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
   const rows=(D.SPK||[])
-    .map(s=>({
-      s,
-      o:ordOf(s.OrderID),
-      h:hkRec(s.No,s.OrderID)
-    }))
+    .map(s=>({s,o:ordOf(s.OrderID),h:hkRec(s.No,s.OrderID)}))
     .filter(x=>x.o)
-    .filter(x =>
-      !tk.length ||
-      tk.every(t =>
-        norm([
-          x.s.No,
-          x.o.Customer,
-          x.o.Uraian,
-          x.o.PO_SJ
-        ].join(' ')).includes(t)
-      )
-    )
-    .sort((a,b)=>
-      String(b.s.No).localeCompare(
-        String(a.s.No),
-        undefined,
-        {numeric:true}
-      )
-    );
+    .filter(x=>!tk.length||tk.every(t=>norm([x.s.No,x.o.Customer,x.o.Uraian,x.o.PO_SJ].join(' ')).includes(t)))
+    .sort((a,b)=>String(b.s.No).localeCompare(String(a.s.No),undefined,{numeric:true}));
 
-  $('#tb').innerHTML=`
-
-  <table style="width:100%;table-layout:fixed">
-
-    <colgroup>
-
-      <col style="width:120px">
-      <col style="width:120px">
-
-      <col style="width:auto">
-
-      <col style="width:110px">
-
-      <col style="width:80px">
-
-      <col style="width:50px">
-      <col style="width:50px">
-      <col style="width:50px">
-
-      <col style="width:60px">
-
-      <col style="width:60px">
-
-      <col style="width:90px">
-
-      <col style="width:90px">
-
-    </colgroup>
-
-    <tr>
-
-      <th>No. SPK</th>
-
-      <th>Customer</th>
-
-      <th>Uraian Barang</th>
-
-      <th>PO/SJ</th>
-
-      <th style="text-align:center">Order</th>
-
-      <th style="text-align:center">L1</th>
-
-      <th style="text-align:center">L2</th>
-
-      <th style="text-align:center">L3</th>
-
-      <th style="text-align:center">Kor</th>
-
-      <th style="text-align:center">Sisa</th>
-
-      <th>Status</th>
-
-      <th>Aksi</th>
-
-    </tr>
-
-${rows.map(({s,o,h})=>{
-
-  const lap1=Number(h?.L1_Jml||0);
-  const lap2=Number(h?.L2_Jml||0);
-  const lap3=Number(h?.L3_Jml||0);
-
-  const kor1=Number(h?.L1_Koreksi||0);
-  const kor2=Number(h?.L2_Koreksi||0);
-  const kor3=Number(h?.L3_Koreksi||0);
-
-  const totalKoreksi=
-    kor1+
-    kor2+
-    kor3;
-
-  const sisaOrder=
-    Number(o.Jumlah||0)
-    -lap1
-    -lap2
-    -lap3
-    -totalKoreksi;
-
-  return `
-
-<tr>
-
-<td>
-  <b>${esc(s.No)}</b>
-</td>
-
-<td>
-  ${esc(o.Customer)}
-</td>
-
-<td
- style="
- white-space:normal;
- line-height:1.4;
- word-break:break-word;
- padding-right:10px;
- ">
-  ${esc(o.Uraian)}
-</td>
-
-<td>
-  ${esc(o.PO_SJ)}
-</td>
-
-<td style="text-align:center">
-  ${num(o.Jumlah)}
-</td>
-
-<td style="text-align:center">
-  ${num(lap1)}
-</td>
-
-<td style="text-align:center">
-  ${num(lap2)}
-</td>
-
-<td style="text-align:center">
-  ${num(lap3)}
-</td>
-
-<td
- style="
- text-align:center;
- font-weight:700;
- color:#b45309;
- ">
-  ${num(totalKoreksi)}
-</td>
-
-<td
- style="
- text-align:center;
- font-weight:700;
- ">
-  ${num(sisaOrder)}
-</td>
-
-<td>
-  <span class="badge ${o.Status}">
-    ${o.Status}
-  </span>
-</td>
-
-<td class="act">
-
-<a
- onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">
- ${h?'Edit':'Isi'}
-</a>
-
-${
-h
-?
-`<a
- class="d"
- onclick="delHK('${h.ID}')">
- Hapus
-</a>`
-:
-''
-}
-
-</td>
-
-</tr>
-
-`;
-
-}).join('') ||
-
-`
-
-<tr>
-<td colspan="12" class="empty">
-Belum ada SPK.
-Buat SPK terlebih dahulu.
-</td>
-</tr>
-
-`
-
-}
-
-</table>
-
-`;
+  const c='style="text-align:center"';
+  $('#tb').innerHTML=`<table style="table-layout:fixed;min-width:1050px">
+  <colgroup><col style="width:105px"><col style="width:130px"><col><col style="width:110px"><col style="width:75px">
+  <col style="width:55px"><col style="width:55px"><col style="width:55px"><col style="width:60px"><col style="width:65px"><col style="width:90px"><col style="width:120px"></colgroup>
+  <tr><th>No. SPK</th><th>Customer</th><th>Uraian Barang</th><th>PO/SJ</th><th ${c}>Order</th>
+  <th ${c}>L1</th><th ${c}>L2</th><th ${c}>L3</th><th ${c}>Kor</th><th ${c}>Sisa</th><th>Status</th><th></th></tr>
+  ${rows.map(({s,o,h})=>{
+    const kor=[1,2,3].reduce((a,n)=>a+Number(h?.['L'+n+'_Koreksi']||0),0);
+    const sis=sisa(o); // total semua SPK, konsisten dengan Order & Dashboard
+    return `<tr>
+    <td><b>${esc(s.No)}</b></td>
+    <td style="white-space:normal">${esc(o.Customer)}</td>
+    <td style="white-space:normal;line-height:1.4;word-break:break-word">${esc(o.Uraian)}</td>
+    <td>${esc(o.PO_SJ)}</td>
+    <td ${c}>${num(o.Jumlah)}</td>
+    <td ${c}>${num(h?.L1_Jml)}</td><td ${c}>${num(h?.L2_Jml)}</td><td ${c}>${num(h?.L3_Jml)}</td>
+    <td ${c.slice(0,-1)};font-weight:700;color:var(--warn)">${num(kor)}</td>
+    <td ${c.slice(0,-1)};font-weight:700">${num(sis)}</td>
+    <td><span class="badge ${o.Status}">${esc(o.Status)}</span></td>
+    <td class="act"><a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">${h?'Edit':'Isi'}</a>${h?`<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`:''}</td>
+    </tr>`}).join('')||'<tr><td colspan="12" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}
+  </table>`;
 }
 
 function editHK(no,oid){
@@ -754,42 +574,27 @@ function editHK(no,oid){
   const blk=n=>`
 <div class="full">
   <label>Laporan ${n}</label>
-
   <div class="hk">
-
     <div>
       <span>Jumlah Hasil Kerja</span>
-      <input name="L${n}_Jml" type="number" step="any"
-             value="${esc(h['L'+n+'_Jml'])}">
+      <input name="L${n}_Jml" type="number" step="any" value="${esc(h['L'+n+'_Jml'])}">
     </div>
-
     <div>
       <span>No. Surat Jalan</span>
-      <input name="L${n}_NoSJ"
-             value="${esc(h['L'+n+'_NoSJ'])}">
+      <input name="L${n}_NoSJ" value="${esc(h['L'+n+'_NoSJ'])}">
     </div>
-
     <div>
       <span>Tgl Surat Jalan</span>
-      <input name="L${n}_TglSJ"
-             type="date"
-             value="${esc(h['L'+n+'_TglSJ'])}">
+      <input name="L${n}_TglSJ" type="date" value="${esc(String(h['L'+n+'_TglSJ']||'').slice(0,10))}">
     </div>
-
     <div>
       <span>Koreksi Jumlah</span>
-      <input name="L${n}_Koreksi"
-             type="number"
-             step="any"
-             value="${esc(h['L'+n+'_Koreksi'])}">
+      <input name="L${n}_Koreksi" type="number" step="any" value="${esc(h['L'+n+'_Koreksi'])}">
     </div>
-
     <div>
       <span>Keterangan</span>
-      <input name="L${n}_Ket"
-             value="${esc(h['L'+n+'_Ket'])}">
+      <input name="L${n}_Ket" value="${esc(h['L'+n+'_Ket'])}">
     </div>
-
   </div>
 </div>`;
 
@@ -808,7 +613,7 @@ function saveHKf(e){
   const d={};
   [1,2,3].forEach(n=>['Jml','NoSJ','TglSJ','Koreksi','Ket'].forEach(f=>{
     let v=frm.elements['L'+n+'_'+f].value.trim();
-    if(['Jml','Kotak','Koreksi'].includes(f))v=v===''?'':Number(v);
+    if(['Jml','Koreksi'].includes(f))v=v===''?'':Number(v);
     d['L'+n+'_'+f]=v}));
   api('saveHK',[frm.dataset.no,frm.dataset.oid,d],st=>{toast('Tersimpan ✓ Status order: '+st);load()});
 }
