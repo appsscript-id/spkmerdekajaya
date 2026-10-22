@@ -208,7 +208,7 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.3.0';
+const VER='1.4.0';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -490,8 +490,9 @@ const ordOf=id=>D.Orders.find(x=>x.ID===id);
 const dSl=v=>{const[y,m,d]=String(v||'').split('-');return d?d+'/'+m+'/'+y:''};
 function spkGroups(){const g={};(D.SPK||[]).forEach(r=>{const k=String(r.No);const x=g[k]=g[k]||{no:k,tgl:r.Tgl,ket:String(r.Keterangan||''),items:[]};if(!x.ket&&r.Keterangan)x.ket=String(r.Keterangan);x.items.push(r)});return Object.values(g).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}))}
 function nextNo(tgl){const pre=String(tgl).slice(0,7);let m=0;(D.SPK||[]).forEach(r=>{const n=String(r.No);if(n.indexOf(pre+'-')===0)m=Math.max(m,parseInt(n.slice(pre.length+1),10)||0)});return pre+'-'+String(m+1).padStart(3,'0')}
-const SPKST=['Berjalan','Sebagian','Selesai'];
-const spkSt=os=>{if(!os.length)return 'Berjalan';const n=os.filter(o=>o.Status==='Selesai').length;return n===os.length?'Selesai':n?'Sebagian':'Berjalan'};
+const SPKST=['Belum dimulai','Berjalan','Selesai'];
+const STC={'Belum dimulai':'Baru','Berjalan':'Proses','Selesai':'Selesai'};
+const spkSt=os=>{if(!os.length)return 'Belum dimulai';if(os.every(o=>o.Status==='Selesai'))return 'Selesai';return os.every(o=>(o.Status||'Baru')==='Baru')?'Belum dimulai':'Berjalan'};
 function spkView(){
   $('#topact').innerHTML='<button class="btn" onclick="editSPK()">+ Buat SPK</button>';
   const pers=perOpts((D.SPK||[]).map(r=>r.Tgl));
@@ -505,7 +506,7 @@ function spkView(){
 }
 function spkRows(){
   const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
-  return spkGroups().map(g=>{const os=g.items.map(i=>ordOf(i.OrderID)).filter(Boolean);return {...g,os,st:spkSt(os)}})
+  return spkGroups().map(g=>{const os=g.items.map(i=>ordOf(i.OrderID)).filter(Boolean);return {...g,os,st:spkSt(os),nd:os.filter(o=>o.Status==='Selesai').length}})
     .filter(g=>!tk.length||tk.every(t=>norm(g.no+' '+dSl(g.tgl)+' '+g.ket+' '+g.os.map(o=>[o.Customer,o.Uraian,o.PO_SJ].join(' ')).join(' ')).includes(t)))
     .filter(g=>(!F.status||g.st===F.status)&&(!F.per||String(g.tgl).slice(0,7)===F.per)&&(!F.cust||g.os.some(o=>o.Customer===F.cust)));
 }
@@ -514,10 +515,10 @@ function spkFill(){
   PG=Math.min(Math.max(1,PG),pages);
   const st=(PG-1)*ps,gs=all.slice(st,st+ps);
   $('#tb').innerHTML=`<table><tr><th>No. SPK</th><th>Tanggal</th><th>Customer</th><th class="n">Item</th><th>Keterangan</th><th>Status</th><th></th></tr>
-  ${gs.map(g=>`<tr style="${g.st==='Selesai'?'opacity:.6':''}"><td><b>${esc(g.no)}</b></td><td>${esc(dSl(g.tgl))}</td><td style="white-space:normal;max-width:300px">${esc([...new Set(g.os.map(o=>o.Customer))].join(', '))}</td><td class="n">${g.items.length}</td><td style="white-space:normal;max-width:260px;color:var(--mut)">${esc(g.ket)}</td><td><span class="badge ${g.st}">${g.st}</span></td><td class="act"><a onclick="printSPK('${esc(g.no)}')">Cetak</a><a onclick="editSPK('${esc(g.no)}')">Edit</a><a class="d" onclick="delSPK('${esc(g.no)}')">Hapus</a></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Belum ada SPK</td></tr>'}</table>`;
+  ${gs.map(g=>`<tr style="${g.st==='Selesai'?'opacity:.6':''}"><td><b>${esc(g.no)}</b></td><td>${esc(dSl(g.tgl))}</td><td style="white-space:normal;max-width:300px">${esc([...new Set(g.os.map(o=>o.Customer))].join(', '))}</td><td class="n">${g.items.length}</td><td style="white-space:normal;max-width:260px;color:var(--mut)">${esc(g.ket)}</td><td><span class="badge ${STC[g.st]}">${g.st}</span><div class="us" style="margin-top:3px">${g.nd}/${g.os.length} item selesai</div></td><td class="act"><a onclick="printSPK('${esc(g.no)}')">Cetak</a><a onclick="editSPK('${esc(g.no)}')">Edit</a><a class="d" onclick="delSPK('${esc(g.no)}')">Hapus</a></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Belum ada SPK</td></tr>'}</table>`;
   $('#pgb').innerHTML=pager(all.length,st,gs.length,pages);
 }
-function csvSPK(){dlCSV('SPK.csv',['No. SPK','Tanggal','Customer','Item','Keterangan','Status'],spkRows().map(g=>[g.no,dSl(g.tgl),[...new Set(g.os.map(o=>o.Customer))].join(', '),g.items.length,g.ket,g.st]))}
+function csvSPK(){dlCSV('SPK.csv',['No. SPK','Tanggal','Customer','Item','Item Selesai','Keterangan','Status'],spkRows().map(g=>[g.no,dSl(g.tgl),[...new Set(g.os.map(o=>o.Customer))].join(', '),g.items.length,g.nd,g.ket,g.st]))}
 function editSPK(no){
   const g=no?spkGroups().find(x=>x.no===no):null,tgl=g?g.tgl:today();
   SEL=new Set(g?g.items.map(i=>i.OrderID).filter(id=>ordOf(id)):[]);
