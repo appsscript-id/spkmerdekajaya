@@ -4,7 +4,7 @@
 <base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WorkOrder</title>
+<title>Merdeka Jaya · WorkOrder</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f4f5fb;--card:#fff;--tx:#1e1b4b;--mut:#6b7280;--ac:#4f46e5;--ac2:#818cf8;--bd:#e5e7eb;--sb:#1e1b4b;--ok:#059669;--warn:#d97706;--bad:#dc2626}
@@ -189,7 +189,7 @@ dialog.spkd .spt{min-width:0}
 <body>
 <div class="app">
   <aside id="sb">
-    <div class="logo"><i>▤</i>WorkOrder</div>
+    <div class="logo"><i>▤</i><div>Merdeka Jaya<small style="display:block;font-size:11px;font-weight:500;color:#a5b4fc;margin-top:1px">WorkOrder</small></div></div>
     <nav class="nav" id="nav"></nav>
     <div class="me"><div id="who"></div><a onclick="logout()">⎋ Keluar</a></div>
   </aside>
@@ -209,9 +209,9 @@ dialog.spkd .spt{min-width:0}
 </div>
 <div id="login">
   <div class="lg-l">
-    <div class="lg-b"><i>▤</i>WorkOrder</div>
+    <div class="lg-b"><i>▤</i>Merdeka Jaya</div>
     <h2 class="lg-h">Kelola Order dan Produksi dengan Mudah dan Terukur.</h2>
-    <div class="lg-f">© 2026 WorkOrder</div>
+    <div class="lg-f">© 2026 Merdeka Jaya</div>
   </div>
   <div class="lg-r">
     <form id="lf" class="lc">
@@ -232,7 +232,7 @@ dialog.spkd .spt{min-width:0}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.5.2';
+const VER='1.6.0';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -627,6 +627,7 @@ function printSPK(no){
   const h=`<!doctype html><html><head><meta charset="utf-8"><title>SPK ${esc(no)}</title><style>
 @page{size:A4;margin:14mm}
 body{font-family:"Times New Roman",Cambria,serif;color:#000;margin:0}
+.co{text-align:center;font-size:20px;font-weight:700;letter-spacing:.05em;margin:0 0 2px}
 h2{text-align:center;font-size:17px;font-weight:400;margin:0 0 10px}
 .meta{display:flex;justify-content:space-between;font-size:15px;margin-bottom:4px}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
@@ -634,6 +635,7 @@ th,td{border:1px solid #000;padding:3px 6px;height:28px;font-size:14px;font-weig
 th.n,td.n{text-align:right}
 .ket{margin-top:10px;font-size:14px;line-height:1.5}.ket b{font-weight:400}
 </style></head><body>
+<div class="co">MERDEKA JAYA</div>
 <h2>SURAT PERINTAH KERJA</h2>
 <div class="meta"><span>Tanggal : ${esc(dSl(g.tgl))}</span><span>No : ${esc(no)}</span></div>
 <table><colgroup><col style="width:15%"><col style="width:42%"><col style="width:8%"><col style="width:13%"><col style="width:22%"></colgroup>
@@ -806,12 +808,14 @@ function savePw(){api('changePassword',[frm.elements.o.value,frm.elements.n.valu
 function delU(u){if(confirm('Hapus pengguna '+u+'?'))api('deleteUser',[u],()=>{toast('Terhapus');pengguna()})}
 
 /* ---------- Login ---------- */
+/* Ringkasan perangkat (browser / sistem) yang ikut dicatat di sheet RiwayatLogin. */
+function dev(){const u=navigator.userAgent;const b=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'Browser';const o=/Windows/.test(u)?'Windows':/Android/.test(u)?'Android':/iPhone|iPad/.test(u)?'iOS':/Mac OS/.test(u)?'macOS':/Linux/.test(u)?'Linux':'?';return b+' / '+o+(/Mobile/.test(u)?' (HP)':'')}
 function setWho(r){ME=r;$('#who').innerHTML='<b>'+esc(r.nama)+'</b><br><span style="opacity:.6">@'+esc(r.user)+'</span>'}
 function showLogin(m){TOKEN='';store('wo_t',null);store('wo_u',null);$('#view').innerHTML='';$('#le').textContent=m||'';$('#login').classList.add('on');setTimeout(()=>$('#lu').focus(),50)}
 function enter(r){TOKEN=r.token;store('wo_t',r.token);store('wo_u',JSON.stringify({user:r.user,nama:r.nama}));setWho(r);$('#login').classList.remove('on');load()}
 $('#lf').onsubmit=e=>{e.preventDefault();const b=$('#lb');b.disabled=true;b.textContent='Memeriksa…';
   const done=()=>{b.disabled=false;b.textContent='Masuk'};
-  google.script.run.withSuccessHandler(r=>{done();$('#lp').value='';enter(r)}).withFailureHandler(x=>{done();$('#le').textContent=String(x.message).replace(/^Exception: /,'')}).login($('#lu').value.trim(),$('#lp').value)};
+  google.script.run.withSuccessHandler(r=>{done();$('#lp').value='';enter(r)}).withFailureHandler(x=>{done();$('#le').textContent=String(x.message).replace(/^Exception: /,'')}).login($('#lu').value.trim(),$('#lp').value,dev())};
 function logout(){api('logout',[]);showLogin('')}
 (function(){let t=null,u=null;try{t=sessionStorage.getItem('wo_t');u=JSON.parse(sessionStorage.getItem('wo_u'))}catch(e){}
   if(t&&u){TOKEN=t;setWho(u);load()}else showLogin('')})();
