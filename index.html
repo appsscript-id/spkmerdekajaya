@@ -208,7 +208,7 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.4.0';
+const VER='1.4.1';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -344,7 +344,7 @@ function tableView(){
   fill();
 }
 let PG=1,ALL=false,PS=10,HKS=false;
-const FILL=()=>({spk:spkFill,hk:hkFill}[page]||fill)();
+const FILL=()=>({spk:spkFill,hk:hkFill,laporan:laporanFill}[page]||fill)();
 function pager(total,st,shown,pages,note){
   return `<span class="cnt">${total?`Menampilkan ${st+1}–${st+shown} dari ${total} data`:'0 data'}${note?' · '+note:''}</span>
   <div class="pb"><select onchange="PS=+this.value;PG=1;FILL()">${[10,25,50,100].map(x=>`<option ${x===PS?'selected':''}>${x}</option>`).join('')}</select>
@@ -461,27 +461,40 @@ function del(id){if(!confirm('Hapus data ini?'))return;const p=PAGES[page];
   api('remove',[p.sheet,id],()=>{toast('Terhapus');load()})}
 
 function laporan(){
-  const rows=D.Orders.filter(o=>(!R.from||o.Tgl>=R.from)&&(!R.to||o.Tgl<=R.to)&&(!R.cust||o.Customer===R.cust)).map(o=>{
+  const pers=perOpts(D.Orders.map(o=>o.Tgl));
+  $('#view').innerHTML=toolsH('csvLap')+`<div class="card fb"><input placeholder="Cari customer, uraian, nomor PO / SJ…" value="${esc(q)}" oninput="q=this.value;PG=1;laporanFill()">
+   ${selF(STATUS.map(x=>[x,x]),F.status,'F.status','Semua Status')}
+   ${pers.length?selF(pers,F.per,'F.per','Semua Periode'):''}
+   ${selF(D.Customer.map(c=>[c.Nama,c.Nama]),F.cust,'F.cust','Semua Customer')}
+   <a class="rs" onclick="q='';PG=1;F={status:'',per:'',cust:''};laporan()">Reset</a></div>
+  <div id="lk"></div>
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div><div class="pg" id="pgb"></div></div>`;
+  laporanFill();
+}
+function repRows(){
+  const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
+  return D.Orders.filter(o=>{
+    if(tk.length){const t=norm([o.Customer,o.Uraian,o.Ukuran,o.PO_SJ,o.Keterangan,o.Status].join(' '));if(!tk.every(x=>t.includes(x)))return false}
+    return (!F.status||o.Status===F.status)&&(!F.per||String(o.Tgl).slice(0,7)===F.per)&&(!F.cust||o.Customer===F.cust);
+  }).map(o=>{
     const hn=n=>sum((D.HasilKerja||[]).filter(x=>x.OrderID===o.ID),x=>Number(x['L'+n+'_Jml']||0)+Number(x['L'+n+'_Koreksi']||0));
     const h1=hn(1),h2=hn(2),h3=hn(3);
-    return {...o,h1,h2,h3,sisa:o.Jumlah-h1-h2-h3,nilai:o.Jumlah*o.Harga}});
-  window._rep=rows;
-  $('#view').innerHTML=`<div class="tools">
-   <input type="date" value="${R.from}" onchange="R.from=this.value;laporan()"><input type="date" value="${R.to}" onchange="R.to=this.value;laporan()">
-   <select onchange="R.cust=this.value;laporan()"><option value="">Semua Customer</option>${D.Customer.map(c=>`<option ${c.Nama===R.cust?'selected':''}>${esc(c.Nama)}</option>`).join('')}</select>
-   <span class="grow"></span><button class="btn g" onclick="csv()">Export CSV</button><button class="btn" onclick="print()">Cetak</button></div>
-  <div class="grid"><div class="card kpi"><div class="l">Jumlah Order</div><div class="v">${rows.length}</div></div>
-   <div class="card kpi"><div class="l">Total Jumlah</div><div class="v">${num(sum(rows,r=>r.Jumlah))}</div></div>
-   <div class="card kpi"><div class="l">Total Sisa</div><div class="v">${num(sum(rows,r=>r.sisa))}</div></div>
-   <div class="card kpi"><div class="l">Total Nilai</div><div class="v">${rp(sum(rows,r=>r.nilai))}</div></div></div>
-  <div class="card tw" style="padding:6px"><table><tr><th>Tgl</th><th>Customer</th><th>Uraian</th><th>PO/SJ</th><th class="n">Jumlah</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Lap 3</th><th class="n">Sisa</th><th class="n">Nilai</th><th>Status</th></tr>
-  ${rows.map(r=>`<tr><td>${esc(r.Tgl)}</td><td>${esc(r.Customer)}</td><td>${esc(r.Uraian)}</td><td>${esc(r.PO_SJ)}</td><td class="n">${num(r.Jumlah)}</td><td class="n">${num(r.h1)}</td><td class="n">${num(r.h2)}</td><td class="n">${num(r.h3)}</td><td class="n">${num(r.sisa)}</td><td class="n">${rp(r.nilai)}</td><td><span class="badge ${r.Status}">${r.Status}</span></td></tr>`).join('')||'<tr><td colspan=11 class="empty">Tidak ada data</td></tr>'}</table></div>`;
+    return {...o,h1,h2,h3,sisa:o.Jumlah-h1-h2-h3,nilai:o.Jumlah*o.Harga};
+  });
 }
-function csv(){
-  const h=['Tgl','Customer','Uraian','PO_SJ','Jumlah','h1','h2','h3','sisa','nilai','Status'];
-  const t=[h.join(',')].concat(window._rep.map(r=>h.map(k=>'"'+String(r[k]??'').replace(/"/g,'""')+'"').join(','))).join('\n');
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download='laporan-workorder.csv';a.click();
+function laporanFill(){
+  const all=repRows(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
+  PG=Math.min(Math.max(1,PG),pages);
+  const st=(PG-1)*ps,rows=all.slice(st,st+ps);
+  $('#lk').innerHTML=`<div class="grid"><div class="card kpi"><div class="l">Jumlah Order</div><div class="v">${all.length}</div></div>
+   <div class="card kpi"><div class="l">Total Jumlah</div><div class="v">${num(sum(all,r=>r.Jumlah))}</div></div>
+   <div class="card kpi"><div class="l">Total Sisa</div><div class="v">${num(sum(all,r=>r.sisa))}</div></div>
+   <div class="card kpi"><div class="l">Total Nilai</div><div class="v">${rp(sum(all,r=>r.nilai))}</div></div></div>`;
+  $('#tb').innerHTML=`<table><tr><th>Tgl</th><th>Customer</th><th>Uraian</th><th>PO/SJ</th><th class="n">Jumlah</th><th class="n">Lap 1</th><th class="n">Lap 2</th><th class="n">Lap 3</th><th class="n">Sisa</th><th class="n">Nilai</th><th>Status</th></tr>
+  ${rows.map(r=>`<tr><td>${esc(r.Tgl)}</td><td>${esc(r.Customer)}</td><td>${esc(r.Uraian)}</td><td>${esc(r.PO_SJ)}</td><td class="n">${num(r.Jumlah)}</td><td class="n">${num(r.h1)}</td><td class="n">${num(r.h2)}</td><td class="n">${num(r.h3)}</td><td class="n">${num(r.sisa)}</td><td class="n">${rp(r.nilai)}</td><td><span class="badge ${r.Status}">${r.Status}</span></td></tr>`).join('')||'<tr><td colspan="11" class="empty">Tidak ada data</td></tr>'}</table>`;
+  $('#pgb').innerHTML=pager(all.length,st,rows.length,pages);
 }
+function csvLap(){dlCSV('Laporan-WorkOrder.csv',['Tgl','Customer','Uraian','PO/SJ','Jumlah','Lap 1','Lap 2','Lap 3','Sisa','Nilai','Status'],repRows().map(r=>[r.Tgl,r.Customer,r.Uraian,r.PO_SJ,r.Jumlah,r.h1,r.h2,r.h3,r.sisa,r.nilai,r.Status]))}
 function syncC(){api('syncCustomers',[],n=>{toast(n+' customer baru diimpor');load()})}
 
 /* ---------- SPK (Surat Perintah Kerja) ---------- */
