@@ -127,6 +127,9 @@ dialog.wide{width:min(920px,96vw)}
 .spg-h{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;padding:6px 12px;background:var(--bg);color:var(--mut);font-size:12px;font-weight:700;border-bottom:1px solid var(--bd)}
 .spg-h span:first-child{color:var(--tx)}
 
+.dn{opacity:.5}.dn.on{opacity:.85}
+.Berjalan{background:#fef3c7;color:#b45309}.Sebagian{background:#ede9fe;color:#6d28d9}
+
 /* ===== Hasil Kerja ===== */
 .hk{display:grid;grid-template-columns:1.1fr 1fr 1fr .9fr 1.4fr;gap:8px;}
 .hk span{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
@@ -205,7 +208,7 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.2.2';
+const VER='1.3.0';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -256,7 +259,7 @@ let SL='tabel';
 try{const s=localStorage.getItem('wo_sl');if(SLO.some(o=>o[0]===s))SL=s}catch(e){}
 
 function nav(){let g='',h='';for(const k in PAGES){const p=PAGES[k];if(p.g!==g){g=p.g;h+=`<div class="nav-g">${g}</div>`}h+=`<a class="${k===page?'on':''}" onclick="go('${k}')"><span>${p.ic}</span>${p.t}</a>`}$('#nav').innerHTML=h}
-function go(p){page=p;q='';PG=1;F={status:'',per:'',cust:''};sb.classList.remove('o');render()}
+function go(p){page=p;q='';PG=1;HKS=false;F={status:'',per:'',cust:''};sb.classList.remove('o');render()}
 let TOKEN='',ME={};
 function store(k,v){try{v==null?sessionStorage.removeItem(k):sessionStorage.setItem(k,v)}catch(e){}}
 function api(fn,args,ok){google.script.run.withSuccessHandler(ok||(()=>{})).withFailureHandler(e=>{if(/SESSION/.test(e.message))showLogin('Sesi berakhir, silakan masuk lagi.');else toast(e.message)})[fn](TOKEN,...args)}
@@ -340,19 +343,27 @@ function tableView(){
   <div class="card" style="padding:6px"><div class="tw" id="tb"></div><div class="pg" id="pgb"></div></div>`;
   fill();
 }
-let PG=1,ALL=false,PS=10;
+let PG=1,ALL=false,PS=10,HKS=false;
+const FILL=()=>({spk:spkFill,hk:hkFill}[page]||fill)();
+function pager(total,st,shown,pages,note){
+  return `<span class="cnt">${total?`Menampilkan ${st+1}–${st+shown} dari ${total} data`:'0 data'}${note?' · '+note:''}</span>
+  <div class="pb"><select onchange="PS=+this.value;PG=1;FILL()">${[10,25,50,100].map(x=>`<option ${x===PS?'selected':''}>${x}</option>`).join('')}</select>
+  <button ${PG<=1?'disabled':''} onclick="gp(${PG-1})">‹ Sebelumnya</button><span>Hal ${PG}/${pages}</span><button ${PG>=pages?'disabled':''} onclick="gp(${PG+1})">Berikutnya ›</button></div>`;
+}
+const selF=(opts,cur,set,all)=>`<select onchange="${set}=this.value;PG=1;FILL()"><option value="">${all}</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+const toolsH=csv=>`<div class="tools"><button class="btn g" onclick="${csv}()">⭳ Ekspor CSV</button><button class="btn g" onclick="printAll()">⭳ Unduh PDF</button><button class="btn g" onclick="printAll()">⎙ Cetak</button></div>`;
+const perOpts=a=>[...new Set(a.map(t=>String(t).slice(0,7)).filter(x=>/^\d{4}-\d\d$/.test(x)))].sort().reverse().map(v=>[v,perLbl(v)]);
+function dlCSV(name,head,rows){const t=[head.join(',')].concat(rows.map(r=>r.map(x=>'"'+String(x??'').replace(/"/g,'""')+'"').join(','))).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+t],{type:'text/csv'}));a.download=name;a.click()}
 function fill(){
   const p=PAGES[page],all=rowsF(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
   PG=Math.min(Math.max(1,PG),pages);
   const st=(PG-1)*ps,rows=all.slice(st,st+ps),isO=page==='orders';
   $('#tb').innerHTML=`<table><tr>${p.f.map(f=>`<th class="${f[2]==='number'?'n':''}">${f[1]}</th>`).join('')}${isO?'<th class="n">Sisa</th>':''}<th></th></tr>
   ${rows.map(r=>`<tr>${p.f.map(f=>`<td class="${f[2]==='number'?'n':''}">${f[2]==='number'&&f[0]!=='Harga'?num(r[f[0]]):cell(f[0],f[2],r[f[0]])}</td>`).join('')}${isO?`<td class="n"><b>${num(sisa(r))}</b></td>`:''}<td class="act"><a onclick="edit('${r.ID}')">Edit</a><a class="d" onclick="del('${r.ID}')">Hapus</a></td></tr>`).join('')||`<tr><td colspan="${p.f.length+2}" class="empty">Tidak ada data</td></tr>`}</table>`;
-  $('#pgb').innerHTML=`<span class="cnt">${all.length?`Menampilkan ${st+1}–${st+rows.length} dari ${all.length} data`:'0 data'}</span>
-  <div class="pb"><select onchange="PS=+this.value;PG=1;fill()">${[10,25,50,100].map(x=>`<option ${x===PS?'selected':''}>${x}</option>`).join('')}</select>
-  <button ${PG<=1?'disabled':''} onclick="gp(${PG-1})">‹ Sebelumnya</button><span>Hal ${PG}/${pages}</span><button ${PG>=pages?'disabled':''} onclick="gp(${PG+1})">Berikutnya ›</button></div>`;
+  $('#pgb').innerHTML=pager(all.length,st,rows.length,pages);
 }
-function gp(n){PG=n;fill();$('#tb').scrollIntoView({block:'start',behavior:'smooth'})}
-function printAll(){ALL=true;fill();setTimeout(()=>{print();ALL=false;fill()},100)}
+function gp(n){PG=n;FILL();$('#tb').scrollIntoView({block:'start',behavior:'smooth'})}
+function printAll(){ALL=true;FILL();setTimeout(()=>{print();ALL=false;FILL()},100)}
 function csvT(){
   const p=PAGES[page],rows=rowsF(),ks=p.f.map(f=>f[0]);
   const t=[p.f.map(f=>f[1]).join(',')].concat(rows.map(r=>ks.map(k=>'"'+String(k==='OrderID'?ordLabel(r[k]):(r[k]??'')).replace(/"/g,'""')+'"').join(','))).join('\n');
@@ -479,19 +490,34 @@ const ordOf=id=>D.Orders.find(x=>x.ID===id);
 const dSl=v=>{const[y,m,d]=String(v||'').split('-');return d?d+'/'+m+'/'+y:''};
 function spkGroups(){const g={};(D.SPK||[]).forEach(r=>{const k=String(r.No);const x=g[k]=g[k]||{no:k,tgl:r.Tgl,ket:String(r.Keterangan||''),items:[]};if(!x.ket&&r.Keterangan)x.ket=String(r.Keterangan);x.items.push(r)});return Object.values(g).sort((a,b)=>b.no.localeCompare(a.no,undefined,{numeric:true}))}
 function nextNo(tgl){const pre=String(tgl).slice(0,7);let m=0;(D.SPK||[]).forEach(r=>{const n=String(r.No);if(n.indexOf(pre+'-')===0)m=Math.max(m,parseInt(n.slice(pre.length+1),10)||0)});return pre+'-'+String(m+1).padStart(3,'0')}
+const SPKST=['Berjalan','Sebagian','Selesai'];
+const spkSt=os=>{if(!os.length)return 'Berjalan';const n=os.filter(o=>o.Status==='Selesai').length;return n===os.length?'Selesai':n?'Sebagian':'Berjalan'};
 function spkView(){
   $('#topact').innerHTML='<button class="btn" onclick="editSPK()">+ Buat SPK</button>';
-  $('#view').innerHTML=`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ, keterangan…" value="${esc(q)}" oninput="q=this.value;spkFill()"><a class="rs" onclick="q='';spkView()">Reset</a></div>
-  <div class="card" style="padding:6px"><div class="tw" id="tb"></div></div>`;
+  const pers=perOpts((D.SPK||[]).map(r=>r.Tgl));
+  $('#view').innerHTML=toolsH('csvSPK')+`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ, keterangan…" value="${esc(q)}" oninput="q=this.value;PG=1;spkFill()">
+   ${selF(SPKST.map(x=>[x,x]),F.status,'F.status','Semua Status')}
+   ${pers.length?selF(pers,F.per,'F.per','Semua Periode'):''}
+   ${selF(D.Customer.map(c=>[c.Nama,c.Nama]),F.cust,'F.cust','Semua Customer')}
+   <a class="rs" onclick="q='';PG=1;F={status:'',per:'',cust:''};spkView()">Reset</a></div>
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div><div class="pg" id="pgb"></div></div>`;
   spkFill();
 }
-function spkFill(){
+function spkRows(){
   const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
-  const gs=spkGroups().map(g=>({...g,os:g.items.map(i=>ordOf(i.OrderID)).filter(Boolean)}))
-    .filter(g=>!tk.length||tk.every(t=>norm(g.no+' '+dSl(g.tgl)+' '+g.ket+' '+g.os.map(o=>[o.Customer,o.Uraian,o.PO_SJ].join(' ')).join(' ')).includes(t)));
-  $('#tb').innerHTML=`<table><tr><th>No. SPK</th><th>Tanggal</th><th>Customer</th><th class="n">Item</th><th>Keterangan</th><th></th></tr>
-  ${gs.map(g=>`<tr><td><b>${esc(g.no)}</b></td><td>${esc(dSl(g.tgl))}</td><td style="white-space:normal;max-width:300px">${esc([...new Set(g.os.map(o=>o.Customer))].join(', '))}</td><td class="n">${g.items.length}</td><td style="white-space:normal;max-width:260px;color:var(--mut)">${esc(g.ket)}</td><td class="act"><a onclick="printSPK('${esc(g.no)}')">Cetak</a><a onclick="editSPK('${esc(g.no)}')">Edit</a><a class="d" onclick="delSPK('${esc(g.no)}')">Hapus</a></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Belum ada SPK</td></tr>'}</table>`;
+  return spkGroups().map(g=>{const os=g.items.map(i=>ordOf(i.OrderID)).filter(Boolean);return {...g,os,st:spkSt(os)}})
+    .filter(g=>!tk.length||tk.every(t=>norm(g.no+' '+dSl(g.tgl)+' '+g.ket+' '+g.os.map(o=>[o.Customer,o.Uraian,o.PO_SJ].join(' ')).join(' ')).includes(t)))
+    .filter(g=>(!F.status||g.st===F.status)&&(!F.per||String(g.tgl).slice(0,7)===F.per)&&(!F.cust||g.os.some(o=>o.Customer===F.cust)));
 }
+function spkFill(){
+  const all=spkRows(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
+  PG=Math.min(Math.max(1,PG),pages);
+  const st=(PG-1)*ps,gs=all.slice(st,st+ps);
+  $('#tb').innerHTML=`<table><tr><th>No. SPK</th><th>Tanggal</th><th>Customer</th><th class="n">Item</th><th>Keterangan</th><th>Status</th><th></th></tr>
+  ${gs.map(g=>`<tr style="${g.st==='Selesai'?'opacity:.6':''}"><td><b>${esc(g.no)}</b></td><td>${esc(dSl(g.tgl))}</td><td style="white-space:normal;max-width:300px">${esc([...new Set(g.os.map(o=>o.Customer))].join(', '))}</td><td class="n">${g.items.length}</td><td style="white-space:normal;max-width:260px;color:var(--mut)">${esc(g.ket)}</td><td><span class="badge ${g.st}">${g.st}</span></td><td class="act"><a onclick="printSPK('${esc(g.no)}')">Cetak</a><a onclick="editSPK('${esc(g.no)}')">Edit</a><a class="d" onclick="delSPK('${esc(g.no)}')">Hapus</a></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Belum ada SPK</td></tr>'}</table>`;
+  $('#pgb').innerHTML=pager(all.length,st,gs.length,pages);
+}
+function csvSPK(){dlCSV('SPK.csv',['No. SPK','Tanggal','Customer','Item','Keterangan','Status'],spkRows().map(g=>[g.no,dSl(g.tgl),[...new Set(g.os.map(o=>o.Customer))].join(', '),g.items.length,g.ket,g.st]))}
 function editSPK(no){
   const g=no?spkGroups().find(x=>x.no===no):null,tgl=g?g.tgl:today();
   SEL=new Set(g?g.items.map(i=>i.OrderID).filter(id=>ordOf(id)):[]);
@@ -502,7 +528,7 @@ function editSPK(no){
    <div class="full"><label>Pilih Order untuk SPK<span id="spkc"></span></label>
     <input id="spkq" placeholder="Cari customer, uraian, nomor PO / SJ…" oninput="spkL()" onkeydown="if(event.key==='Enter')event.preventDefault()">
     <div class="spkl" id="spkl"></div>
-    <div class="us">Data diambil otomatis dari Order. Jumlah order tidak berkurang.</div></div>`;
+    <div class="us">Data diambil otomatis dari Order. Jumlah order tidak berkurang. Order berstatus Selesai diredupkan dan diurutkan paling bawah.</div></div>`;
   frm.dataset.id=no||'';frm.dataset.multi='';frm.dataset.mode='spk';dlg.classList.add('wide');
   spkL();openD();
 }
@@ -510,9 +536,10 @@ function spkPrev(){if(frm.dataset.id)return;$('#spkno').value=nextNo(frm.element
 function spkL(){
   const tk=($('#spkq').value||'').toLowerCase().split(/\s+/).map(norm).filter(Boolean),used={};
   (D.SPK||[]).forEach(r=>{const a=used[r.OrderID]=used[r.OrderID]||[];if(!a.includes(r.No))a.push(r.No)});
-  const os=[...D.Orders].reverse().filter(o=>SEL.has(o.ID)||!tk.length||tk.every(t=>norm([o.Customer,o.Uraian,o.Ukuran,o.PO_SJ].join(' ')).includes(t)));
+  const fin=o=>o.Status==='Selesai'&&!SEL.has(o.ID)?1:0;
+  const os=[...D.Orders].reverse().filter(o=>SEL.has(o.ID)||!tk.length||tk.every(t=>norm([o.Customer,o.Uraian,o.Ukuran,o.PO_SJ].join(' ')).includes(t))).sort((x,y)=>fin(x)-fin(y));
   const ck=o=>`<input type="checkbox" ${SEL.has(o.ID)?'checked':''}>`;
-  const on=o=>SEL.has(o.ID)?' on':'';
+  const on=o=>(SEL.has(o.ID)?' on':'')+(o.Status==='Selesai'?' dn':'');
   const bd=o=>used[o.ID]?`<span class="badge Proses">SPK ${esc(used[o.ID].join(', '))}</span>`:'';
   const meta=o=>[o.Ukuran,(num(o.Jumlah)+' '+(o.Satuan||'')).trim(),o.PO_SJ].filter(x=>String(x||'').trim()).map(esc).join(' · ');
   const clk=o=>`onclick="spkT('${o.ID}',this)"`;
@@ -570,18 +597,29 @@ ${ket}
 /* ---------- Hasil Kerja (dari SPK) ---------- */
 function hkView(){
   $('#topact').innerHTML='';
-  $('#view').innerHTML=`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ…" value="${esc(q)}" oninput="q=this.value;hkFill()"><a class="rs" onclick="q='';hkView()">Reset</a></div>
-  <div class="card" style="padding:6px"><div class="tw" id="tb"></div></div>`;
+  const pers=perOpts((D.SPK||[]).map(r=>r.Tgl));
+  $('#view').innerHTML=toolsH('csvHK')+`<div class="card fb"><input placeholder="Cari nomor SPK, customer, uraian, PO/SJ…" value="${esc(q)}" oninput="q=this.value;PG=1;hkFill()">
+   ${selF(STATUS.map(x=>[x,x]),F.status,'F.status','Semua Status')}
+   ${pers.length?selF(pers,F.per,'F.per','Semua Periode'):''}
+   ${selF(D.Customer.map(c=>[c.Nama,c.Nama]),F.cust,'F.cust','Semua Customer')}
+   <button class="btn g" onclick="HKS=!HKS;PG=1;hkView()">${HKS?'Sembunyikan yang selesai':'Tampilkan yang selesai'}</button>
+   <a class="rs" onclick="q='';PG=1;HKS=false;F={status:'',per:'',cust:''};hkView()">Reset</a></div>
+  <div class="card" style="padding:6px"><div class="tw" id="tb"></div><div class="pg" id="pgb"></div></div>`;
   hkFill();
 }
-function hkFill(){
+function hkRows(){
   const tk=q.toLowerCase().split(/\s+/).map(norm).filter(Boolean);
-  const rows=(D.SPK||[])
-    .map(s=>({s,o:ordOf(s.OrderID),h:hkRec(s.No,s.OrderID)}))
-    .filter(x=>x.o)
+  const base=(D.SPK||[]).map(s=>({s,o:ordOf(s.OrderID),h:hkRec(s.No,s.OrderID)})).filter(x=>x.o)
     .filter(x=>!tk.length||tk.every(t=>norm([x.s.No,x.o.Customer,x.o.Uraian,x.o.PO_SJ].join(' ')).includes(t)))
+    .filter(x=>(!F.per||String(x.s.Tgl).slice(0,7)===F.per)&&(!F.cust||x.o.Customer===F.cust))
     .sort((a,b)=>String(b.s.No).localeCompare(String(a.s.No),undefined,{numeric:true}));
-
+  const rows=base.filter(x=>F.status?x.o.Status===F.status:(HKS||x.o.Status!=='Selesai'));
+  return {rows,hidden:base.length-rows.length};
+}
+function hkFill(){
+  const {rows:all,hidden}=hkRows(),ps=ALL?1e9:PS,pages=Math.max(1,Math.ceil(all.length/ps));
+  PG=Math.min(Math.max(1,PG),pages);
+  const st=(PG-1)*ps,rows=all.slice(st,st+ps);
   const c='style="text-align:center"';
   const stc={Baru:'#4338ca',Proses:'#b45309',Selesai:'#047857'};
   $('#tb').innerHTML=`<table style="table-layout:fixed;min-width:900px">
@@ -601,9 +639,11 @@ function hkFill(){
     <td ${cc};font-weight:700">${num(sis)}</td>
     <td ${cc};font-weight:700;color:${stc[o.Status]||'inherit'}">${esc(o.Status)}</td>
     <td class="act"><a onclick="editHK('${esc(s.No)}','${esc(s.OrderID)}')">${h?'Edit':'Isi'}</a>${h?`<a class="d" onclick="delHK('${h.ID}')">Hapus</a>`:''}</td>
-    </tr>`}).join('')||'<tr><td colspan="10" class="empty">Belum ada SPK. Buat SPK terlebih dahulu.</td></tr>'}
+    </tr>`}).join('')||'<tr><td colspan="10" class="empty">Tidak ada data. Buat SPK terlebih dahulu, atau klik "Tampilkan yang selesai".</td></tr>'}
   </table>`;
+  $('#pgb').innerHTML=pager(all.length,st,rows.length,pages,hidden?hidden+' selesai disembunyikan':'');
 }
+function csvHK(){dlCSV('Hasil-Kerja.csv',['No. SPK','Customer','Uraian','PO/SJ','Order','L1','L2','L3','Koreksi','Sisa','Status'],hkRows().rows.map(({s,o,h})=>[s.No,o.Customer,o.Uraian,o.PO_SJ,o.Jumlah,h?.L1_Jml??0,h?.L2_Jml??0,h?.L3_Jml??0,[1,2,3].reduce((a,n)=>a+Number(h?.['L'+n+'_Koreksi']||0),0),sisa(o),o.Status]))}
 
 function editHK(no,oid){
   const o=ordOf(oid),h=hkRec(no,oid)||{};
