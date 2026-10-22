@@ -212,7 +212,7 @@ dialog[data-fs=sheet][open]{animation:fsUp .2s ease}
    Tempel URL web app Apps Script (berakhiran /exec) di bawah ini.
    Jika halaman dibuka langsung dari URL Apps Script, bagian ini tidak dipakai. */
 const API_URL='https://script.google.com/macros/s/AKfycbyH485Suonibrr1NonBRPf60EMMbIWhT9NSqEdsNXg9AYjr2kLNjkB-dQoyM5ginSpd/exec';
-const VER='1.5.0';
+const VER='1.5.1';
 if(typeof google==='undefined'){
   const mk=(ok,fail)=>new Proxy({},{get:(_,k)=>{
     if(k==='withSuccessHandler')return f=>mk(f,fail);
@@ -380,6 +380,7 @@ function edit(id){
   const p=PAGES[page],r=id?D[p.sheet].find(x=>x.ID===id):{Tgl:today(),Status:'Baru'};
   $('#mh').textContent=(id?'Edit ':'Tambah ')+p.t;
   $('#mb').innerHTML=p.f.map(([k,l,t,w])=>{
+    if(t==='status')return `<input type="hidden" name="${k}" value="${esc(r[k]||'Baru')}">`; /* status otomatis, tidak bisa diubah manual */
     let i;const v=esc(r[k]);
     if(t==='customer')i=cbox(k,r[k]);
     else if(t==='order')i=`<select name="${k}" required><option value="">— pilih order —</option>${D.Orders.map(o=>`<option value="${o.ID}" ${o.ID===r[k]?'selected':''}>${esc(o.Customer+' · '+o.Uraian)}</option>`).join('')}</select>`;
@@ -434,7 +435,7 @@ function editPO(){
   $('#mb').innerHTML=`<div><label>Tanggal</label>${dpBox('Tgl')}</div>
    <div><label>Customer</label>${cbox('Customer','')}</div>
    <div><label>PO/SJ</label><input name="PO_SJ" required></div>
-   <div><label>Status</label><select name="Status">${STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+   <input type="hidden" name="Status" value="Baru">
    <div class="full"><label>Item Order<span id="cnt"></span></label>
     <div class="ith"><span>Uraian</span><span>Ukuran</span><span>Jumlah</span><span>Satuan</span><span>Harga PO</span><span>Keterangan</span><span></span></div>
     <div id="items"></div><button type="button" class="btn g" onclick="addItem()">+ Tambah item</button></div>`;
